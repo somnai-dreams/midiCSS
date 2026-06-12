@@ -152,7 +152,16 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
   const CACHE_TTL = 2; // seconds, audio clock
   let cacheGen = 0;
   let cacheJitter = 0; // staggers expiry so multi-track sweeps don't align
-  type BoxCache = { gen: number; at: number; ttl: number; animated: boolean; boxes: NoteBox[] };
+  type SecRect = { left: number; top: number; w: number; h: number };
+  type BoxCache = {
+    gen: number;
+    at: number;
+    ttl: number;
+    animated: boolean;
+    boxes: NoteBox[]; // returned to the scheduler (mutated in place when animated)
+    base: NoteBox[] | null; // pristine copies for the affine fast path
+    sec: SecRect | null; // section rect (roll-relative) at cache time
+  };
   const boxCache = new WeakMap<HTMLElement, BoxCache>();
   const bumpCache = (): void => {
     cacheGen++;
@@ -171,9 +180,35 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
   window.addEventListener("hashchange", bumpCache);
   window.addEventListener("resize", bumpCache);
 
+  const secRect = (trk: HTMLElement): SecRect => {
+    const rollR = roll.getBoundingClientRect();
+    const r = trk.getBoundingClientRect();
+    return { left: r.left - rollR.left, top: r.top - rollR.top, w: r.width, h: r.height };
+  };
+
   const trackBoxes = (trk: HTMLElement, now: number): NoteBox[] => {
     const hit = boxCache.get(trk);
-    if (hit !== undefined && !hit.animated && hit.gen === cacheGen && now - hit.at < hit.ttl) {
+    if (hit !== undefined && hit.gen === cacheGen && now - hit.at < hit.ttl) {
+      if (!hit.animated || hit.base === null || hit.sec === null) return hit.boxes;
+      // Animated fast path: our animations move sections as whole units, so
+      // re-derive note geometry from the section's CURRENT rect (two reads)
+      // instead of re-reading thousands of notes. Exact for translate/scale.
+      const s1 = secRect(trk);
+      const s0 = hit.sec;
+      const sx = s0.w === 0 ? 1 : s1.w / s0.w;
+      const sy = s0.h === 0 ? 1 : s1.h / s0.h;
+      const cw = cellW();
+      const rh = rowH();
+      for (let i = 0; i < hit.boxes.length; i++) {
+        const o = hit.boxes[i];
+        const b = hit.base[i];
+        if (o === undefined || b === undefined) continue;
+        if (b.pseudo !== null) continue; // pseudos read grid lines, not rects
+        o.step = (s1.left + (b.step * cw - s0.left) * sx) / cw;
+        o.len = b.len * sx;
+        const y0 = (TOP_MIDI - b.midi + 0.5) * rh;
+        o.midi = TOP_MIDI - ((s1.top + (y0 - s0.top) * sy) / rh - 0.5);
+      }
       return hit.boxes;
     }
     const boxes: NoteBox[] = [];
@@ -187,7 +222,15 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
       if (nb) boxes.push(nb);
     }
     const animated = trk.getAnimations({ subtree: true }).length > 0;
-    boxCache.set(trk, { gen: cacheGen, at: now, ttl: CACHE_TTL + (cacheJitter++ % 8) * 0.17, animated, boxes });
+    boxCache.set(trk, {
+      gen: cacheGen,
+      at: now,
+      ttl: (animated ? 1 : CACHE_TTL) + (cacheJitter++ % 8) * 0.17,
+      animated,
+      boxes,
+      base: animated ? boxes.map((b) => ({ ...b })) : null,
+      sec: animated ? secRect(trk) : null,
+    });
     return boxes;
   };
 

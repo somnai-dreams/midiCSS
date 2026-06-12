@@ -2635,9 +2635,34 @@ function init(roll, wrap) {
   window.addEventListener("change", bumpCache, true);
   window.addEventListener("hashchange", bumpCache);
   window.addEventListener("resize", bumpCache);
+  const secRect = (trk) => {
+    const rollR = roll.getBoundingClientRect();
+    const r = trk.getBoundingClientRect();
+    return { left: r.left - rollR.left, top: r.top - rollR.top, w: r.width, h: r.height };
+  };
   const trackBoxes = (trk, now) => {
     const hit = boxCache.get(trk);
-    if (hit !== undefined && !hit.animated && hit.gen === cacheGen && now - hit.at < hit.ttl) {
+    if (hit !== undefined && hit.gen === cacheGen && now - hit.at < hit.ttl) {
+      if (!hit.animated || hit.base === null || hit.sec === null)
+        return hit.boxes;
+      const s1 = secRect(trk);
+      const s0 = hit.sec;
+      const sx = s0.w === 0 ? 1 : s1.w / s0.w;
+      const sy = s0.h === 0 ? 1 : s1.h / s0.h;
+      const cw = cellW();
+      const rh = rowH();
+      for (let i = 0;i < hit.boxes.length; i++) {
+        const o = hit.boxes[i];
+        const b = hit.base[i];
+        if (o === undefined || b === undefined)
+          continue;
+        if (b.pseudo !== null)
+          continue;
+        o.step = (s1.left + (b.step * cw - s0.left) * sx) / cw;
+        o.len = b.len * sx;
+        const y0 = (TOP_MIDI - b.midi + 0.5) * rh;
+        o.midi = TOP_MIDI - ((s1.top + (y0 - s0.top) * sy) / rh - 0.5);
+      }
       return hit.boxes;
     }
     const boxes = [];
@@ -2654,7 +2679,15 @@ function init(roll, wrap) {
         boxes.push(nb);
     }
     const animated = trk.getAnimations({ subtree: true }).length > 0;
-    boxCache.set(trk, { gen: cacheGen, at: now, ttl: CACHE_TTL + cacheJitter++ % 8 * 0.17, animated, boxes });
+    boxCache.set(trk, {
+      gen: cacheGen,
+      at: now,
+      ttl: (animated ? 1 : CACHE_TTL) + cacheJitter++ % 8 * 0.17,
+      animated,
+      boxes,
+      base: animated ? boxes.map((b) => ({ ...b })) : null,
+      sec: animated ? secRect(trk) : null
+    });
     return boxes;
   };
   const ensureTrack = () => {
