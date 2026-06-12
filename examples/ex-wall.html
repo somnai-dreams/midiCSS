@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" style="--bpm:80">
+<html lang="en" style="--bpm:124">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PHANTOM MASS</title>
+<title>the wall</title>
 <style>
 /* midiCSS — the layout is the song. Rows are pitches (row 1 = B5 … row 48 = C2),
    columns are 16th-note steps. Notes are <b> grid items; everything musical is
@@ -312,266 +312,131 @@ body.css-open #wrap { margin-right: var(--panelw); }
 }
 </style>
 <style id="songcss">
-/* ========== PHANTOM MASS — arrangement (edit live via { } css) ==========
-   The music is the interference. Drift animations bend the standing wall
-   (the engine re-reads sustained voices' geometry live); their periods
-   (47s, 31s, 29s, 23s) are incommensurate with the 24s loop. */
-
-body:has(#mute-pedal:checked)   .trk[data-name="Pedal"]     { --vol: 0 !important; filter: grayscale(1) brightness(0.5); }
-body:has(#mute-wall:checked)    .trk[data-name="Wall"]      { --vol: 0 !important; filter: grayscale(1) brightness(0.5); }
-body:has(#mute-ghost:checked)   .trk[data-name="Ghostwall"] { --vol: 0 !important; filter: grayscale(1) brightness(0.5); }
-body:has(#mute-canon:checked)   .trk[data-name="Canon"]     { --vol: 0 !important; filter: grayscale(1) brightness(0.5); }
-body:has(#mute-phantom:checked) .trk[data-name="Phantom"]   { --vol: 0 !important; filter: grayscale(1) brightness(0.5); }
-
-/* naked: solo the phantom pair — the bassline you still hear is played by
-   nothing; it is a difference tone made inside your ear */
-body:has(#naked:checked) .trk:not([data-name="Phantom"]) { --vol: 0 !important; filter: grayscale(1) brightness(0.5); }
-
-/* the wall breathes: pitch drift + volume swell, opposing directions */
-html.playing .trk[data-name="Wall"] {
-  animation: drift-a 47s ease-in-out infinite, swell-a 29s ease-in-out infinite;
+/* every kick dips the whole mass — the pump is one property */
+html { --duck: 0.4; }
+/* cathedral: drown the wall */
+body:has(#cathedral:checked) .trk { --verb: 0.6 !important; }
+/* collapse: fold the cluster field toward one row and let it bloom back —
+   sounding notes bend live as the layout compresses */
+html.playing:has(#collapse:checked) :is(.trk[data-name="Cluster"], .trk[data-name="Pad"]) {
+  animation: fold 8s ease-in-out infinite;
+  transform-origin: 50% calc(var(--rh) * 23.5);
 }
-@keyframes drift-a {
-  0%, 100% { transform: translateY(calc(var(--rh) * -0.1)); }
-  50% { transform: translateY(calc(var(--rh) * 0.1)); }
-}
-@keyframes swell-a { 0%, 100% { --vol: 0.055; } 50% { --vol: 0.11; } }
-
-html.playing .trk[data-name="Ghostwall"] {
-  animation: drift-b 31s ease-in-out infinite, swell-b 23s ease-in-out infinite;
-}
-@keyframes drift-b {
-  0%, 100% { transform: translateY(calc(var(--rh) * 0.12)); }
-  50% { transform: translateY(calc(var(--rh) * -0.12)); }
-}
-@keyframes swell-b { 0%, 100% { --vol: 0.06; } 50% { --vol: 0.03; } }
-
-/* still: freeze all motion — hear the wall as a fixed object */
-body:has(#still:checked) .trk[data-name="Wall"],
-body:has(#still:checked) .trk[data-name="Ghostwall"] { animation: none !important; }
-
-/* collapse: the whole spectrum folds toward D and blooms back open;
-   sustained tones bend live as their geometry compresses */
-html.playing:has(#collapse:checked) .trk[data-name="Wall"],
-html.playing:has(#collapse:checked) .trk[data-name="Ghostwall"] {
-  animation: collapse-m 36s ease-in-out infinite;
-  transform-origin: 50% calc(var(--rh) * 9.5);
-}
-@keyframes collapse-m { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.05); } }
-
-.trk { transition: --vol 2s ease; }
-
-/* standing motion: filter plucks, ±4-cent breath, canon filter wander */
-.trk { --fenv: 0.6; }
-html.playing .trk { animation: microtape 23s ease-in-out infinite; }
-@keyframes microtape {
-  0%, 100% { translate: 0 0; }
-  33% { translate: 0 calc(var(--rh) * -0.045); }
-  66% { translate: 0 calc(var(--rh) * 0.035); }
-}
-html.playing .trk[data-name="Canon"] { animation: cutdrift 9.3s ease-in-out infinite, microtape 23s ease-in-out infinite; }
-@keyframes cutdrift { 0%, 100% { --cutoff: 1300; } 50% { --cutoff: 2500; } }
+@keyframes fold { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }
 </style>
 </head>
 <body>
 <nav id="mixer">
-<span>css-only:</span>
-<label><input type="checkbox" id="mute-pedal"> mute pedal</label>
-<label><input type="checkbox" id="mute-wall"> mute wall</label>
-<label><input type="checkbox" id="mute-ghost"> mute ghostwall</label>
-<label><input type="checkbox" id="mute-canon"> mute canon</label>
-<label><input type="checkbox" id="mute-phantom"> mute phantom</label>
-<label><input type="checkbox" id="naked"> naked (phantom only)</label>
-<label><input type="checkbox" id="still"> still</label>
+<label><input type="checkbox" id="cathedral"> cathedral</label>
 <label><input type="checkbox" id="collapse"> collapse</label>
 </nav>
 <div id="wrap">
-<main id="roll" style="--steps:128">
-<section class="trk" data-name="Pedal" style="--wave:sine;--vol:0.32;--hue:20;--attack:0.8;--release:1.8;--verb:0.25;--width:0">
-  <b style="grid-area:46/1/47/129;--vel:1"></b>
-  <b style="grid-area:46/1/47/129;--vel:0.8;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0600))"></b>
-  <b style="grid-area:46/1/47/129;--vel:0.8;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0600))"></b>
-  <b style="grid-area:39/1/40/129;--vel:0.7"></b>
-  <b style="grid-area:39/1/40/129;--vel:0.6;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0500))"></b>
-  <b style="grid-area:34/1/35/129;--vel:0.5"></b>
-  <b style="grid-area:34/1/35/129;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0500))"></b>
+<main id="roll" style="--steps:32">
+<section class="trk" data-name="Cluster" style="--wave:ep;--vol:0.06;--hue:200;--cutoff:2400;--attack:0.003;--release:0.2;--verb:0.3;--width:0.6">
+  <b style="grid-area:24/1/25/3;--vel:0.9;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.2600))"></b>
+  <b style="grid-area:24/1/25/3;--vel:0.846;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1195))"></b>
+  <b style="grid-area:24/1/25/3;--vel:0.792;transform-origin:left;transform:translate(calc(var(--cw) * 0.0263),calc(var(--rh) * -0.0210))"></b>
+  <b style="grid-area:24/1/25/3;--vel:0.7380000000000001;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0815))"></b>
+  <b style="grid-area:24/1/25/3;--vel:0.684;transform-origin:left;transform:translate(calc(var(--cw) * 0.0026),calc(var(--rh) * -0.2221))"></b>
+  <b style="grid-area:21/3/22/5;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0376),calc(var(--rh) * 0.0233))"></b>
+  <b style="grid-area:21/2/22/4;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9758),calc(var(--rh) * -0.0372))"></b>
+  <b style="grid-area:21/3/22/5;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0139),calc(var(--rh) * -0.1777))"></b>
+  <b style="grid-area:21/2/22/4;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9521),calc(var(--rh) * -0.2382))"></b>
+  <b style="grid-area:21/2/22/4;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9902),calc(var(--rh) * -0.3788))"></b>
+  <b style="grid-area:17/5/18/7;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0253),calc(var(--rh) * 0.1866))"></b>
+  <b style="grid-area:17/4/18/6;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9634),calc(var(--rh) * 0.1261))"></b>
+  <b style="grid-area:17/5/18/7;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0015),calc(var(--rh) * -0.0144))"></b>
+  <b style="grid-area:17/5/18/7;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0397),calc(var(--rh) * -0.0749))"></b>
+  <b style="grid-area:17/4/18/6;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9778),calc(var(--rh) * -0.2155))"></b>
+  <b style="grid-area:14/7/15/9;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0129),calc(var(--rh) * 0.0099))"></b>
+  <b style="grid-area:14/6/15/8;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9510),calc(var(--rh) * -0.0506))"></b>
+  <b style="grid-area:14/6/15/8;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9892),calc(var(--rh) * -0.1911))"></b>
+  <b style="grid-area:14/7/15/9;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0273),calc(var(--rh) * -0.2516))"></b>
+  <b style="grid-area:14/6/15/8;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9655),calc(var(--rh) * -0.3922))"></b>
+  <b style="grid-area:12/9/13/11;--vel:0.9;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1932))"></b>
+  <b style="grid-area:12/9/13/11;--vel:0.846;transform-origin:left;transform:translate(calc(var(--cw) * 0.0387),calc(var(--rh) * 0.1327))"></b>
+  <b style="grid-area:12/8/13/10;--vel:0.792;transform-origin:left;transform:translate(calc(var(--cw) * 0.9768),calc(var(--rh) * -0.0078))"></b>
+  <b style="grid-area:12/9/13/11;--vel:0.7380000000000001;transform-origin:left;transform:translate(calc(var(--cw) * 0.0149),calc(var(--rh) * -0.1484))"></b>
+  <b style="grid-area:12/8/13/10;--vel:0.684;transform-origin:left;transform:translate(calc(var(--cw) * 0.9531),calc(var(--rh) * -0.2089))"></b>
+  <b style="grid-area:17/10/18/12;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9881),calc(var(--rh) * 0.1765))"></b>
+  <b style="grid-area:17/11/18/13;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0263),calc(var(--rh) * 0.1160))"></b>
+  <b style="grid-area:17/10/18/12;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9644),calc(var(--rh) * -0.0245))"></b>
+  <b style="grid-area:17/11/18/13;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0026),calc(var(--rh) * -0.1651))"></b>
+  <b style="grid-area:17/11/18/13;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0407),calc(var(--rh) * -0.2256))"></b>
+  <b style="grid-area:24/12/25/14;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9758),calc(var(--rh) * 0.1998))"></b>
+  <b style="grid-area:24/13/25/15;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0139),calc(var(--rh) * 0.1393))"></b>
+  <b style="grid-area:24/12/25/14;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9521),calc(var(--rh) * -0.0012))"></b>
+  <b style="grid-area:24/12/25/14;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9902),calc(var(--rh) * -0.1418))"></b>
+  <b style="grid-area:24/13/25/15;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0284),calc(var(--rh) * -0.2023))"></b>
+  <b style="grid-area:21/14/22/16;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9634),calc(var(--rh) * 0.0431))"></b>
+  <b style="grid-area:21/15/22/17;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0015),calc(var(--rh) * -0.0174))"></b>
+  <b style="grid-area:21/15/22/17;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0397),calc(var(--rh) * -0.1579))"></b>
+  <b style="grid-area:21/14/22/16;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9778),calc(var(--rh) * -0.2985))"></b>
+  <b style="grid-area:21/15/22/17;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0160),calc(var(--rh) * -0.3590))"></b>
+  <b style="grid-area:17/16/18/18;--vel:0.9;transform-origin:left;transform:translate(calc(var(--cw) * 0.9510),calc(var(--rh) * 0.2064))"></b>
+  <b style="grid-area:17/16/18/18;--vel:0.846;transform-origin:left;transform:translate(calc(var(--cw) * 0.9892),calc(var(--rh) * 0.1459))"></b>
+  <b style="grid-area:17/17/18/19;--vel:0.792;transform-origin:left;transform:translate(calc(var(--cw) * 0.0273),calc(var(--rh) * 0.0054))"></b>
+  <b style="grid-area:17/16/18/18;--vel:0.7380000000000001;transform-origin:left;transform:translate(calc(var(--cw) * 0.9655),calc(var(--rh) * -0.1352))"></b>
+  <b style="grid-area:17/17/18/19;--vel:0.684;transform-origin:left;transform:translate(calc(var(--cw) * 0.0036),calc(var(--rh) * -0.1957))"></b>
+  <b style="grid-area:14/19/15/21;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0387),calc(var(--rh) * 0.0297))"></b>
+  <b style="grid-area:14/18/15/20;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9768),calc(var(--rh) * -0.0308))"></b>
+  <b style="grid-area:14/19/15/21;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0149),calc(var(--rh) * -0.1713))"></b>
+  <b style="grid-area:14/18/15/20;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9531),calc(var(--rh) * -0.3119))"></b>
+  <b style="grid-area:14/18/15/20;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9912),calc(var(--rh) * -0.3724))"></b>
+  <b style="grid-area:12/21/13/23;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0263),calc(var(--rh) * 0.2130))"></b>
+  <b style="grid-area:12/20/13/22;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9644),calc(var(--rh) * 0.0725))"></b>
+  <b style="grid-area:12/21/13/23;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0026),calc(var(--rh) * 0.0120))"></b>
+  <b style="grid-area:12/21/13/23;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0407),calc(var(--rh) * -0.1286))"></b>
+  <b style="grid-area:12/20/13/22;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9789),calc(var(--rh) * -0.1891))"></b>
+  <b style="grid-area:17/23/18/25;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0139),calc(var(--rh) * 0.1963))"></b>
+  <b style="grid-area:17/22/18/24;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9521),calc(var(--rh) * 0.0558))"></b>
+  <b style="grid-area:17/22/18/24;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9902),calc(var(--rh) * -0.0047))"></b>
+  <b style="grid-area:17/23/18/25;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0284),calc(var(--rh) * -0.1453))"></b>
+  <b style="grid-area:17/22/18/24;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9665),calc(var(--rh) * -0.2058))"></b>
+  <b style="grid-area:24/25/25/27;--vel:0.9;transform-origin:left;transform:translate(calc(var(--cw) * 0.0015),calc(var(--rh) * 0.2196))"></b>
+  <b style="grid-area:24/25/25/27;--vel:0.846;transform-origin:left;transform:translate(calc(var(--cw) * 0.0397),calc(var(--rh) * 0.0791))"></b>
+  <b style="grid-area:24/24/25/26;--vel:0.792;transform-origin:left;transform:translate(calc(var(--cw) * 0.9778),calc(var(--rh) * 0.0186))"></b>
+  <b style="grid-area:24/25/25/27;--vel:0.7380000000000001;transform-origin:left;transform:translate(calc(var(--cw) * 0.0160),calc(var(--rh) * -0.1220))"></b>
+  <b style="grid-area:24/24/25/26;--vel:0.684;transform-origin:left;transform:translate(calc(var(--cw) * 0.9541),calc(var(--rh) * -0.1825))"></b>
+  <b style="grid-area:21/26/22/28;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9892),calc(var(--rh) * 0.0629))"></b>
+  <b style="grid-area:21/27/22/29;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0273),calc(var(--rh) * -0.0776))"></b>
+  <b style="grid-area:21/26/22/28;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9655),calc(var(--rh) * -0.1381))"></b>
+  <b style="grid-area:21/27/22/29;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0036),calc(var(--rh) * -0.2787))"></b>
+  <b style="grid-area:21/27/22/29;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0418),calc(var(--rh) * -0.4192))"></b>
+  <b style="grid-area:17/28/18/30;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9768),calc(var(--rh) * 0.2262))"></b>
+  <b style="grid-area:17/29/18/31;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0149),calc(var(--rh) * 0.0857))"></b>
+  <b style="grid-area:17/28/18/30;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9531),calc(var(--rh) * 0.0252))"></b>
+  <b style="grid-area:17/28/18/30;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9912),calc(var(--rh) * -0.1154))"></b>
+  <b style="grid-area:17/29/18/31;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0294),calc(var(--rh) * -0.2559))"></b>
+  <b style="grid-area:14/30/15/32;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9644),calc(var(--rh) * 0.0495))"></b>
+  <b style="grid-area:14/31/15/33;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0026),calc(var(--rh) * -0.0910))"></b>
+  <b style="grid-area:14/31/15/33;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0407),calc(var(--rh) * -0.1515))"></b>
+  <b style="grid-area:14/30/15/32;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9789),calc(var(--rh) * -0.2921))"></b>
+  <b style="grid-area:14/31/15/33;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0170),calc(var(--rh) * -0.4326))"></b>
 </section>
-<section class="trk" data-name="Wall" style="--wave:sine;--vol:0.08;--hue:190;--attack:1.5;--release:1.8;--verb:0.5;--width:0.7">
-  <b style="grid-area:34/1/35/129;--vel:0.81"></b>
-  <b style="grid-area:34/1/35/129;--vel:0.81;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:34/1/35/129;--vel:0.81;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:27/1/28/129;--vel:0.66;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0196))"></b>
-  <b style="grid-area:27/1/28/129;--vel:0.66;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0996))"></b>
-  <b style="grid-area:27/1/28/129;--vel:0.66;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0604))"></b>
-  <b style="grid-area:22/1/23/129;--vel:0.57"></b>
-  <b style="grid-area:22/1/23/129;--vel:0.57;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:22/1/23/129;--vel:0.57;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:18/1/19/129;--vel:0.51;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1369))"></b>
-  <b style="grid-area:18/1/19/129;--vel:0.51;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0569))"></b>
-  <b style="grid-area:18/1/19/129;--vel:0.51;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.2169))"></b>
-  <b style="grid-area:15/1/16/129;--vel:0.47;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0196))"></b>
-  <b style="grid-area:15/1/16/129;--vel:0.47;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0996))"></b>
-  <b style="grid-area:15/1/16/129;--vel:0.47;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0604))"></b>
-  <b style="grid-area:12/1/13/129;--vel:0.43;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.3117))"></b>
-  <b style="grid-area:12/1/13/129;--vel:0.43;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.2317))"></b>
-  <b style="grid-area:12/1/13/129;--vel:0.43;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.3917))"></b>
-  <b style="grid-area:10/1/11/129;--vel:0.41"></b>
-  <b style="grid-area:10/1/11/129;--vel:0.41;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:10/1/11/129;--vel:0.41;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:8/1/9/129;--vel:0.38;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0391))"></b>
-  <b style="grid-area:8/1/9/129;--vel:0.38;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1191))"></b>
-  <b style="grid-area:8/1/9/129;--vel:0.38;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0409))"></b>
-  <b style="grid-area:6/1/7/129;--vel:0.36;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1369))"></b>
-  <b style="grid-area:6/1/7/129;--vel:0.36;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0569))"></b>
-  <b style="grid-area:6/1/7/129;--vel:0.36;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.2169))"></b>
-  <b style="grid-area:4/1/5/129;--vel:0.35;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.4868))"></b>
-  <b style="grid-area:4/1/5/129;--vel:0.35;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.4068))"></b>
-  <b style="grid-area:5/1/6/129;--vel:0.35;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.4332))"></b>
-  <b style="grid-area:3/1/4/129;--vel:0.33;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0196))"></b>
-  <b style="grid-area:3/1/4/129;--vel:0.33;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0996))"></b>
-  <b style="grid-area:3/1/4/129;--vel:0.33;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0604))"></b>
-  <b style="grid-area:2/1/3/129;--vel:0.32;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.4053))"></b>
-  <b style="grid-area:2/1/3/129;--vel:0.32;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.4853))"></b>
-  <b style="grid-area:2/1/3/129;--vel:0.32;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.3253))"></b>
+<section class="trk" data-name="Pad" style="--wave:organ;--vol:0.05;--hue:280;--attack:0.3;--release:0.6;--verb:0.5;--vibrato:6;--width:0.5">
+  <b style="grid-area:24/1/25/17;--vel:0.7"></b>
+  <b style="grid-area:24/1/25/17;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0900))"></b>
+  <b style="grid-area:21/1/22/17;--vel:0.7;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1600))"></b>
+  <b style="grid-area:21/1/22/17;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.2500))"></b>
+  <b style="grid-area:17/1/18/17;--vel:0.7"></b>
+  <b style="grid-area:17/1/18/17;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0900))"></b>
+  <b style="grid-area:29/17/30/33;--vel:0.7"></b>
+  <b style="grid-area:29/17/30/33;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0900))"></b>
+  <b style="grid-area:24/17/25/33;--vel:0.7"></b>
+  <b style="grid-area:24/17/25/33;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0900))"></b>
+  <b style="grid-area:21/17/22/33;--vel:0.7;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1600))"></b>
+  <b style="grid-area:21/17/22/33;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.2500))"></b>
 </section>
-<section class="trk" data-name="Ghostwall" style="--wave:triangle;--vol:0.05;--hue:280;--attack:1.2;--release:1.5;--verb:0.5;--pan:-0.2">
-  <b style="grid-area:34/1/35/129;--vel:0.81;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1200))"></b>
-  <b style="grid-area:27/1/28/129;--vel:0.66;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1396))"></b>
-  <b style="grid-area:22/1/23/129;--vel:0.57;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1200))"></b>
-  <b style="grid-area:18/1/19/129;--vel:0.51;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0169))"></b>
-  <b style="grid-area:15/1/16/129;--vel:0.47;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1396))"></b>
-  <b style="grid-area:12/1/13/129;--vel:0.43;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1917))"></b>
-  <b style="grid-area:10/1/11/129;--vel:0.41;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1200))"></b>
-  <b style="grid-area:8/1/9/129;--vel:0.38;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1591))"></b>
-  <b style="grid-area:6/1/7/129;--vel:0.36;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0169))"></b>
-  <b style="grid-area:4/1/5/129;--vel:0.35;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.3668))"></b>
-  <b style="grid-area:3/1/4/129;--vel:0.33;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1396))"></b>
-  <b style="grid-area:1/1/2/129;--vel:0.32;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.4747))"></b>
-</section>
-<section class="trk" data-name="Canon" style="--wave:square;--vol:0.045;--hue:320;--cutoff:1800;--attack:0.15;--release:0.4;--verb:0.45;--echo:0.2;--width:0.6">
-  <b style="grid-area:10/1/11/9;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1100))"></b>
-  <b style="grid-area:8/9/9/17;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1100))"></b>
-  <b style="grid-area:6/17/7/25;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1100))"></b>
-  <b style="grid-area:3/25/4/37;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1100))"></b>
-  <b style="grid-area:5/37/6/45;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1100))"></b>
-  <b style="grid-area:6/45/7/53;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1100))"></b>
-  <b style="grid-area:8/53/9/61;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1100))"></b>
-  <b style="grid-area:10/61/11/73;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1100))"></b>
-  <b style="grid-area:22/5/23/13;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0400))"></b>
-  <b style="grid-area:20/13/21/21;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0400))"></b>
-  <b style="grid-area:18/21/19/29;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0400))"></b>
-  <b style="grid-area:15/29/16/41;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0400))"></b>
-  <b style="grid-area:17/41/18/49;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0400))"></b>
-  <b style="grid-area:18/49/19/57;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0400))"></b>
-  <b style="grid-area:20/57/21/65;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0400))"></b>
-  <b style="grid-area:22/65/23/77;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0400))"></b>
-  <b style="grid-area:34/9/35/17;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0300))"></b>
-  <b style="grid-area:32/17/33/25;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0300))"></b>
-  <b style="grid-area:30/25/31/33;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0300))"></b>
-  <b style="grid-area:27/33/28/45;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0300))"></b>
-  <b style="grid-area:29/45/30/53;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0300))"></b>
-  <b style="grid-area:30/53/31/61;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0300))"></b>
-  <b style="grid-area:32/61/33/69;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0300))"></b>
-  <b style="grid-area:34/69/35/81;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0300))"></b>
-  <b style="grid-area:10/13/11/21;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1000))"></b>
-  <b style="grid-area:8/21/9/29;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1000))"></b>
-  <b style="grid-area:6/29/7/37;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1000))"></b>
-  <b style="grid-area:3/37/4/49;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1000))"></b>
-  <b style="grid-area:5/49/6/57;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1000))"></b>
-  <b style="grid-area:6/57/7/65;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1000))"></b>
-  <b style="grid-area:8/65/9/73;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1000))"></b>
-  <b style="grid-area:10/73/11/85;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1000))"></b>
-  <b style="grid-area:22/17/23/25;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0600))"></b>
-  <b style="grid-area:20/25/21/33;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0600))"></b>
-  <b style="grid-area:18/33/19/41;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0600))"></b>
-  <b style="grid-area:15/41/16/53;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0600))"></b>
-  <b style="grid-area:17/53/18/61;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0600))"></b>
-  <b style="grid-area:18/61/19/69;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0600))"></b>
-  <b style="grid-area:20/69/21/77;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0600))"></b>
-  <b style="grid-area:22/77/23/89;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0600))"></b>
-  <b style="grid-area:34/21/35/29;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0100))"></b>
-  <b style="grid-area:32/29/33/37;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0100))"></b>
-  <b style="grid-area:30/37/31/45;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0100))"></b>
-  <b style="grid-area:27/45/28/57;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0100))"></b>
-  <b style="grid-area:29/57/30/65;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0100))"></b>
-  <b style="grid-area:30/65/31/73;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0100))"></b>
-  <b style="grid-area:32/73/33/81;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0100))"></b>
-  <b style="grid-area:34/81/35/93;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0100))"></b>
-  <b style="grid-area:10/25/11/33;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:8/33/9/41;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:6/41/7/49;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:3/49/4/61;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:5/61/6/69;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:6/69/7/77;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:8/77/9/85;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:10/85/11/97;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0800))"></b>
-  <b style="grid-area:22/29/23/37;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:20/37/21/45;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:18/45/19/53;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:15/53/16/65;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:17/65/18/73;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:18/73/19/81;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:20/81/21/89;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:22/89/23/101;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0800))"></b>
-  <b style="grid-area:34/33/35/41;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0100))"></b>
-  <b style="grid-area:32/41/33/49;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0100))"></b>
-  <b style="grid-area:30/49/31/57;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0100))"></b>
-  <b style="grid-area:27/57/28/69;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0100))"></b>
-  <b style="grid-area:29/69/30/77;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0100))"></b>
-  <b style="grid-area:30/77/31/85;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0100))"></b>
-  <b style="grid-area:32/85/33/93;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0100))"></b>
-  <b style="grid-area:34/93/35/105;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0100))"></b>
-  <b style="grid-area:10/37/11/45;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0600))"></b>
-  <b style="grid-area:8/45/9/53;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0600))"></b>
-  <b style="grid-area:6/53/7/61;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0600))"></b>
-  <b style="grid-area:3/61/4/73;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0600))"></b>
-  <b style="grid-area:5/73/6/81;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0600))"></b>
-  <b style="grid-area:6/81/7/89;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0600))"></b>
-  <b style="grid-area:8/89/9/97;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0600))"></b>
-  <b style="grid-area:10/97/11/109;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0600))"></b>
-  <b style="grid-area:22/41/23/49;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1000))"></b>
-  <b style="grid-area:20/49/21/57;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1000))"></b>
-  <b style="grid-area:18/57/19/65;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1000))"></b>
-  <b style="grid-area:15/65/16/77;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1000))"></b>
-  <b style="grid-area:17/77/18/85;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1000))"></b>
-  <b style="grid-area:18/85/19/93;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1000))"></b>
-  <b style="grid-area:20/93/21/101;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1000))"></b>
-  <b style="grid-area:22/101/23/113;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1000))"></b>
-  <b style="grid-area:34/45/35/53;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0300))"></b>
-  <b style="grid-area:32/53/33/61;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0300))"></b>
-  <b style="grid-area:30/61/31/69;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0300))"></b>
-  <b style="grid-area:27/69/28/81;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0300))"></b>
-  <b style="grid-area:29/81/30/89;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0300))"></b>
-  <b style="grid-area:30/89/31/97;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0300))"></b>
-  <b style="grid-area:32/97/33/105;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0300))"></b>
-  <b style="grid-area:34/105/35/117;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0300))"></b>
-  <b style="grid-area:10/49/11/57;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0400))"></b>
-  <b style="grid-area:8/57/9/65;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0400))"></b>
-  <b style="grid-area:6/65/7/73;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0400))"></b>
-  <b style="grid-area:3/73/4/85;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0400))"></b>
-  <b style="grid-area:5/85/6/93;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0400))"></b>
-  <b style="grid-area:6/93/7/101;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0400))"></b>
-  <b style="grid-area:8/101/9/109;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0400))"></b>
-  <b style="grid-area:10/109/11/121;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0400))"></b>
-  <b style="grid-area:22/53/23/61;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1100))"></b>
-  <b style="grid-area:20/61/21/69;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1100))"></b>
-  <b style="grid-area:18/69/19/77;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1100))"></b>
-  <b style="grid-area:15/77/16/89;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1100))"></b>
-  <b style="grid-area:17/89/18/97;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1100))"></b>
-  <b style="grid-area:18/97/19/105;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1100))"></b>
-  <b style="grid-area:20/105/21/113;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1100))"></b>
-  <b style="grid-area:22/113/23/125;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1100))"></b>
-</section>
-<section class="trk" data-name="Phantom" style="--wave:sine;--vol:0.2;--hue:60;--attack:0.3;--release:0.8;--verb:0.03;--width:0">
-  <b style="grid-area:5/1/6/129;--vel:1"></b>
-  <b style="grid-area:2/1/3/17;--vel:1;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0280))"></b>
-  <b style="grid-area:2/17/3/33;--vel:1;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.3032))"></b>
-  <b style="grid-area:3/33/4/49;--vel:1;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.2731))"></b>
-  <b style="grid-area:1/49/2/65;--vel:1;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.3322))"></b>
-  <b style="grid-area:3/65/4/81;--vel:1;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0391))"></b>
-  <b style="grid-area:2/81/3/97;--vel:1;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.4680))"></b>
-  <b style="grid-area:3/97/4/113;--vel:1;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.2731))"></b>
-  <b style="grid-area:2/113/3/129;--vel:1;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.0280))"></b>
+<section class="trk" data-name="Kick" style="--wave:noise;--vol:0.4;--hue:10;--verb:0.04;--width:0">
+  <b style="grid-area:44/1/45/2;--vel:1"></b>
+  <b style="grid-area:44/5/45/6;--vel:1"></b>
+  <b style="grid-area:44/9/45/10;--vel:1"></b>
+  <b style="grid-area:44/13/45/14;--vel:1"></b>
+  <b style="grid-area:44/17/45/18;--vel:1"></b>
+  <b style="grid-area:44/21/45/22;--vel:1"></b>
+  <b style="grid-area:44/25/45/26;--vel:1"></b>
+  <b style="grid-area:44/29/45/30;--vel:1"></b>
 </section>
 </main>
 </div>

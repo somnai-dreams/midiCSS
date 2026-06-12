@@ -2189,6 +2189,82 @@ const ex7: Song = {
   ],
 };
 
+// the grid is a suggestion: quarter-tone blue notes, just intonation,
+// swing as fractional steps — with the quantize A/B
+const exBlueRiff: SongNote[] = [
+  { m: 60, s: 0, l: 2 }, { m: 63.16, s: 2.67, l: 1.33 }, { m: 65, s: 4, l: 2 },
+  { m: 66.5, s: 6.67, l: 1.33 }, { m: 67, s: 8, l: 3 },
+  { m: 69.69, s: 12, l: 2 }, { m: 67, s: 14.67, l: 1.33 },
+  { m: 72, s: 16, l: 4 }, { m: 69.69, s: 20.67, l: 1.33 }, { m: 67, s: 22, l: 2 },
+  { m: 66.5, s: 24.67, l: 1.33 }, { m: 65, s: 26, l: 2 }, { m: 63.16, s: 28.67, l: 1.33 },
+  { m: 60, s: 30, l: 2 },
+];
+const exBlueBass: SongNote[] = [];
+for (let i = 0; i < 8; i++) {
+  exBlueBass.push({ m: i % 2 === 0 ? 36 : 48, s: i * 4, l: 3, v: i % 2 === 0 ? 1 : 0.7 });
+}
+const EXBLUE_CSS = `
+/* the A/B: strip every transform — microtones and swing vanish, and the
+   same riff plays dead straight in 12-TET */
+body:has(#quantize:checked) .trk b { transform: none !important; }
+`;
+const exBlue: Song = {
+  file: "examples/ex-blue.html",
+  title: "the grid is a suggestion",
+  bpm: 116,
+  steps: 32,
+  css: EXBLUE_CSS,
+  mixer: `<label><input type="checkbox" id="quantize"> quantize: snap to 12-TET, kill the swing</label>`,
+  tracks: [
+    { name: "Riff", wave: "brass", vol: 0.2, hue: 25, synth: "--cutoff:1800;--vibrato:10;--echo:0.2;--verb:0.25;--attack:0.01;--release:0.1", notes: exBlueRiff },
+    { name: "Bass", wave: "triangle", vol: 0.3, hue: 145, synth: "--cutoff:700;--width:0.1", notes: exBlueBass },
+  ],
+};
+
+// the wall: every hit a five-note microtonal cluster, pumped by the kick
+const WALLCYC = [60, 63.16, 67, 70.18, 72, 67.02];
+const exWallCluster: SongNote[] = [];
+for (let i = 0; i < 16; i++) {
+  cluster(exWallCluster, WALLCYC[i % 6] ?? 60, 5, 0.22, i * 2, 2, i % 4 === 0 ? 0.9 : 0.5, i * 13);
+}
+const exWallPad: SongNote[] = [];
+for (const [s0, tones] of [[0, [60, 63.16, 67]], [16, [55, 60, 63.16]]] as [number, number[]][]) {
+  for (const t of tones) {
+    exWallPad.push({ m: t, s: s0, l: 16, v: 0.7 });
+    exWallPad.push({ m: t + 0.09, s: s0, l: 16, v: 0.5 });
+  }
+}
+const exWallKick: SongNote[] = [];
+for (let i = 0; i < 8; i++) exWallKick.push({ m: 40, s: i * 4, l: 1, v: 1 });
+const EXWALL_CSS = `
+/* every kick dips the whole mass — the pump is one property */
+html { --duck: 0.4; }
+/* cathedral: drown the wall */
+body:has(#cathedral:checked) .trk { --verb: 0.6 !important; }
+/* collapse: fold the cluster field toward one row and let it bloom back —
+   sounding notes bend live as the layout compresses */
+html.playing:has(#collapse:checked) :is(.trk[data-name="Cluster"], .trk[data-name="Pad"]) {
+  animation: fold 8s ease-in-out infinite;
+  transform-origin: 50% calc(var(--rh) * 23.5);
+}
+@keyframes fold { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }
+`;
+const exWall: Song = {
+  file: "examples/ex-wall.html",
+  title: "the wall",
+  bpm: 124,
+  steps: 32,
+  css: EXWALL_CSS,
+  mixer: `
+<label><input type="checkbox" id="cathedral"> cathedral</label>
+<label><input type="checkbox" id="collapse"> collapse</label>`,
+  tracks: [
+    { name: "Cluster", wave: "ep", vol: 0.06, hue: 200, synth: "--cutoff:2400;--attack:0.003;--release:0.2;--verb:0.3;--width:0.6", notes: exWallCluster },
+    { name: "Pad", wave: "organ", vol: 0.05, hue: 280, synth: "--attack:0.3;--release:0.6;--verb:0.5;--vibrato:6;--width:0.5", notes: exWallPad },
+    { name: "Kick", wave: "noise", vol: 0.4, hue: 10, synth: "--verb:0.04;--width:0", notes: exWallKick },
+  ],
+};
+
 const css = await Bun.file("src/style.css").text();
 const ts = await Bun.file("src/daw.ts").text();
 const tpl = await Bun.file("src/template.html").text();
@@ -2203,7 +2279,7 @@ const sonifyJs =
 await Bun.write("sonify.js", sonifyJs);
 console.log(`sonify.js — ${(sonifyJs.length / 1024).toFixed(1)} kB`);
 
-for (const song of [demo, bloom, ratio, blue, bloom31, mass, hammers, hammersX, pump, selectorSong, ex1, ex2, ex3, ex4, ex5, ex6, ex7]) {
+for (const song of [demo, bloom, ratio, blue, bloom31, mass, hammers, hammersX, pump, selectorSong, ex1, ex2, ex3, ex4, exBlue, ex5, ex6, exWall, ex7]) {
   const out = tpl
     .replace("__TITLE__", () => song.title)
     .replace("__BPM__", () => String(song.bpm))
@@ -2230,8 +2306,8 @@ const stagePayload = (s: Song): { title: string; bpm: number; steps: number; css
   mixer: s.mixer.trim(),
   song: s.tracks.map(track).join("\n"),
 });
-const stagesJson = JSON.stringify([ex1, ex2, ex3, ex4, ex5, ex6, ex7].map(stagePayload)).replace(/</g, "\\u003c");
+const stagesJson = JSON.stringify([ex1, ex2, ex3, ex4, exBlue, ex5, ex6, exWall, ex7].map(stagePayload)).replace(/</g, "\\u003c");
 const blogTpl = await Bun.file("src/blog.html").text();
 const blogOut = blogTpl.replace("__STAGES__", () => stagesJson);
 await Bun.write("blog.html", blogOut);
-console.log(`blog.html — ${(blogOut.length / 1024).toFixed(1)} kB, 7 stages`);
+console.log(`blog.html — ${(blogOut.length / 1024).toFixed(1)} kB, 9 stages`);

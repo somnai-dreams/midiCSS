@@ -212,8 +212,19 @@ body:has(#quarter:checked) .trk[data-name="Melody"] { translate: 0 calc(var(--rh
 <p class="cap">No JavaScript is involved in those toggles. It is only the cascade. <a href="examples/ex4-cascade.html" target="_blank">open this chapter as a file ↗</a></p>
 </section>
 
-<section class="ch" data-stage="4" style="--a:120">
-<h2 data-n="05">media queries are arrangements</h2>
+<section class="ch" data-stage="4" style="--a:25">
+<h2 data-n="05">the grid is a suggestion</h2>
+<p>The grid is twelve-tone equal temperament, but notes are under no obligation to sit on it. The riff now playing has a just-intonation third (16 cents sharp of the piano's), a blue note parked exactly <em>between</em> two frets, and a septimal seventh 31 cents flat — the note horn players actually reach for. Time is off the grid too: the offbeats land at two-thirds of the beat, swing encoded as a fraction of a column. <strong>Hit quantize in the player</strong> and every transform is stripped: the same riff, dead straight, in 12-TET. That toggle is the whole argument for this format.</p>
+<pre>&lt;b style="grid-area:21/3/22/4;
+   transform:translate(calc(var(--cw) * 0.67), calc(var(--rh) * -0.16)) scaleX(1.33)"&gt;&lt;/b&gt;
+<span class="c">/* a swung, just-intonation E♭ — position is pitch, so cents are pixels */</span>
+
+body:has(#quantize:checked) .trk b { transform: none !important; }</pre>
+<p class="cap">This is <a href="blue-31.html" target="_blank">BLUE 31</a> in miniature. <a href="examples/ex-blue.html" target="_blank">open this chapter as a file ↗</a></p>
+</section>
+
+<section class="ch" data-stage="5" style="--a:120">
+<h2 data-n="06">media queries are arrangements</h2>
 <p>If the mix is CSS, the song can respond to anything CSS can see — including the width of its own window. Watch the player: while you read this chapter the page <strong>breathes the frame open and closed</strong>, and every time it narrows past the breakpoint the media query flips — drums cut, tempo drops — then the groove returns as it widens. The same file is a different arrangement on a phone.</p>
 <pre>@media (max-width: 480px) {
   html { --bpm: 84 !important; }
@@ -222,8 +233,8 @@ body:has(#quarter:checked) .trk[data-name="Melody"] { translate: 0 calc(var(--rh
 <p class="cap"><a href="examples/ex5-responsive.html" target="_blank">open this chapter as a file ↗</a> — it has a drag-to-resize corner of its own.</p>
 </section>
 
-<section class="ch" data-stage="5" style="--a:95">
-<h2 data-n="06">animations are automation</h2>
+<section class="ch" data-stage="6" style="--a:95">
+<h2 data-n="07">animations are automation</h2>
 <p>Synth parameters are registered properties, so <code>@keyframes</code> are automation lanes. The music has changed underneath you: a bassline whose filter is swept by an animation — acid as a stylesheet rule — under a kick that pumps everything else through one property, <code>--duck</code>. Tick <em>tape</em> in the player: an animated transform warbles every track's pitch, and because the engine keeps re-reading geometry while notes sound, held notes bend live.</p>
 <pre>html.playing .trk[data-name="Acid"] { animation: sweep 3.1s ease-in-out infinite; }
 @keyframes sweep { 0%, 100% { --cutoff: 250; } 50% { --cutoff: 2600; } }
@@ -232,8 +243,19 @@ html { --duck: 0.4; }  <span class="c">/* every kick ducks everything else */</s
 <p class="cap"><a href="examples/ex6-automation.html" target="_blank">open this chapter as a file ↗</a></p>
 </section>
 
-<section class="ch" data-stage="6" style="--a:265">
-<h2 data-n="07">music from nowhere</h2>
+<section class="ch" data-stage="7" style="--a:350">
+<h2 data-n="08">the wall</h2>
+<p>Why settle for one note per note? Every hit in this stage is a <strong>five-note microtonal cluster</strong> — copies spread ±22 cents, close enough to fuse into one fat voice, far enough apart to churn. It is the supersaw trick, except the unison is written in markup, and a kick pumps the whole mass through one property, <code>--duck</code>. Then the toggles: <em>cathedral</em> raises every reverb send at once, and <em>collapse</em> is a scaleY animation that folds the cluster field toward a single row — the sounding pads audibly bend as the layout compresses, because the player never stops reading the geometry.</p>
+<pre>html.playing:has(#collapse:checked) :is(.trk[data-name="Cluster"], .trk[data-name="Pad"]) {
+  animation: fold 8s ease-in-out infinite;
+  transform-origin: 50% calc(var(--rh) * 23.5);
+}
+@keyframes fold { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }</pre>
+<p class="cap">This is <a href="hammers-x.html" target="_blank">HAMMERS X</a> in miniature. <a href="examples/ex-wall.html" target="_blank">open this chapter as a file ↗</a></p>
+</section>
+
+<section class="ch" data-stage="8" style="--a:265">
+<h2 data-n="09">music from nowhere</h2>
 <p>Two endgames at once. The first track's markup is <em>eight empty elements</em>; every pitch and position comes from a single rule built on <code>sibling-index()</code> and <code>mod()</code>. The stylesheet is the composer. The second track holds no notes at all until you tick <em>summon</em> in the player — it hears a track's <code>::before</code> and <code>::after</code> too, so a checkbox conjures music that exists nowhere in the document tree.</p>
 <pre>.trk[data-name="Formula"] b {
   grid-column: calc((sibling-index() - 1) * 2 + 1);
@@ -290,7 +312,7 @@ const apply = (i) => {
   sections.forEach((s, j) => s.classList.toggle("active", j === i));
   stageno.textContent = String(i + 1).padStart(2, "0");
   stagename.textContent = STAGES[i].title;
-  railframe.classList.toggle("cycling", i === 4);
+  railframe.classList.toggle("cycling", i === 5);
   send(i);
 };
 

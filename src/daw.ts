@@ -1107,6 +1107,31 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
           if (w.startsWith("url(")) loadSample(w);
         }
       }
+      if (m.song !== undefined || m.css !== undefined) {
+        // resume notes that are mid-flight at the current transport position,
+        // so a swap doesn't leave a gap until the next note boundary
+        if (playing && engine !== null) {
+          const now = engine.ctx.currentTime;
+          const sd = lastSd > 0 ? lastSd : stepSec();
+          const n = steps();
+          const pos = (now - startAt) / sd;
+          if (pos > 0) {
+            for (const trk of tracks()) {
+              const lv = Math.round(cssNum(trk, "--loop", 0));
+              const L = lv >= 1 ? lv : n;
+              const local = ((pos % L) + L) % L;
+              for (const nb of trackBoxes(trk, now)) {
+                const w = ((nb.step % L) + L) % L;
+                let into = local - w;
+                if (into < 0) into += L;
+                if (into > 0.05 && into < nb.len - 0.1) {
+                  playNote(trk, nb, now + 0.03, (nb.len - into) * sd);
+                }
+              }
+            }
+          }
+        }
+      }
     });
     // handshake: tell the parent we can receive stages (covers cached-iframe
     // races where the parent misses the load event)
