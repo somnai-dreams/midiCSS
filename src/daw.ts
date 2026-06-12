@@ -874,9 +874,16 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
   let nextStep = 0;
   let timer = 0;
   let lastSd = 0;
+  let lastMaster = -1;
 
   function tick(): void {
-    const { ctx, echoDelay, echoDelay2 } = audio();
+    const { ctx, echoDelay, echoDelay2, out } = audio();
+    // --master: CSS-automatable overall volume (fade-ins, drops to silence)
+    const master = clamp(cssNum(docEl, "--master", 1), 0, 1.5);
+    if (Math.abs(master - lastMaster) > 0.001) {
+      out.gain.setTargetAtTime(0.85 * master, ctx.currentTime, 0.08);
+      lastMaster = master;
+    }
     const sd = stepSec();
     if (sd !== lastSd) {
       // --bpm changed (input, media query, mixer) — rebase so position holds

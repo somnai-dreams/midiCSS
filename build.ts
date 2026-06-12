@@ -1475,15 +1475,14 @@ html.playing[data-pass="6"] .trk[data-name="Bass"] { animation: acidx 3.1s ease-
 /* 7: strip back and turn around */
 html[data-pass="7"] :is(.trk[data-name="SwarmC"], .trk[data-name="SwarmD"], .trk[data-name="Rain"], .trk[data-name="Strum"]) { --vol: 0 !important; }
 
-/* the first pass is a ramp: pitch spins up like a turntable (3.2s, sustained
-   voices bend up live) while one shared filter opens across the whole pass,
-   accelerating into the kit drop. !important so it outranks the tape rule;
-   re-runs on every form wrap. */
+/* the first pass: a real volume fade-in (half the pass) plus a gentle
+   brightening — no pitch spin. Re-runs on every form wrap. */
+html.playing[data-pass="0"] { animation: fadein calc(var(--steps, 128) * 7.5s / var(--bpm, 124)) ease-out 1; }
+@keyframes fadein { 0% { --master: 0; } 100% { --master: 1; } }
 html.playing[data-pass="0"] #roll .trk {
-  animation: rampcut calc(var(--steps) * 15s / var(--bpm)) ease-in 1, microtape 23s ease-in-out infinite, spinup 3.2s ease-out 1 !important;
+  animation: rampcut calc(var(--steps) * 15s / var(--bpm)) ease-in 1, microtape 23s ease-in-out infinite !important;
 }
-@keyframes rampcut { 0% { --cutoff: 120; } 100% { --cutoff: 3000; } }
-@keyframes spinup { 0% { translate: 0 calc(var(--rh) * 3); } 100% { translate: 0 0; } }
+@keyframes rampcut { 0% { --cutoff: 600; } 100% { --cutoff: 3000; } }
 `;
 
 const HX_MIXER = `
@@ -1865,12 +1864,14 @@ html.playing[data-pass="6"] .trk[data-name="Bass"] { animation: acidx 3.4s ease-
 /* 7: outro — back to the loop bones */
 html[data-pass="7"] :is(.trk[data-name="Stabs"], .trk[data-name="Arp"], .trk[data-name="Pad"], .trk[data-name="Vox"], .trk[data-name="Hook"]) { --vol: 0 !important; }
 
-/* the first pass ramps: turntable spin-up + one shared filter opening */
+/* the first pass: volume fade-in (half the pass) + gentle brightening —
+   no pitch spin */
+html.playing[data-pass="0"] { animation: fadein calc(var(--steps, 128) * 7.5s / var(--bpm, 124)) ease-out 1; }
+@keyframes fadein { 0% { --master: 0; } 100% { --master: 1; } }
 html.playing[data-pass="0"] #roll .trk {
-  animation: rampcut calc(var(--steps) * 15s / var(--bpm)) ease-in 1, microtape 23s ease-in-out infinite, spinup 3.2s ease-out 1 !important;
+  animation: rampcut calc(var(--steps) * 15s / var(--bpm)) ease-in 1, microtape 23s ease-in-out infinite !important;
 }
-@keyframes rampcut { 0% { --cutoff: 150; } 100% { --cutoff: 2800; } }
-@keyframes spinup { 0% { translate: 0 calc(var(--rh) * 3); } 100% { translate: 0 0; } }
+@keyframes rampcut { 0% { --cutoff: 600; } 100% { --cutoff: 2800; } }
 `;
 
 const PUMP_MIXER = `

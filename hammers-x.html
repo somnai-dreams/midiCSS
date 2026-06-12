@@ -24,6 +24,7 @@
 @property --form { syntax: "<number>"; inherits: true; initial-value: 1; }
 @property --root { syntax: "<number>"; inherits: true; initial-value: 60; }
 @property --sidechain { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --master { syntax: "<number>"; inherits: true; initial-value: 1; }
 @property --pan { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --width { syntax: "<number>"; inherits: true; initial-value: 0.3; }
 @property --verb { syntax: "<number>"; inherits: true; initial-value: 0.15; }
@@ -308,15 +309,14 @@ html.playing[data-pass="6"] .trk[data-name="Bass"] { animation: acidx 3.1s ease-
 /* 7: strip back and turn around */
 html[data-pass="7"] :is(.trk[data-name="SwarmC"], .trk[data-name="SwarmD"], .trk[data-name="Rain"], .trk[data-name="Strum"]) { --vol: 0 !important; }
 
-/* the first pass is a ramp: pitch spins up like a turntable (3.2s, sustained
-   voices bend up live) while one shared filter opens across the whole pass,
-   accelerating into the kit drop. !important so it outranks the tape rule;
-   re-runs on every form wrap. */
+/* the first pass: a real volume fade-in (half the pass) plus a gentle
+   brightening — no pitch spin. Re-runs on every form wrap. */
+html.playing[data-pass="0"] { animation: fadein calc(var(--steps, 128) * 7.5s / var(--bpm, 124)) ease-out 1; }
+@keyframes fadein { 0% { --master: 0; } 100% { --master: 1; } }
 html.playing[data-pass="0"] #roll .trk {
-  animation: rampcut calc(var(--steps) * 15s / var(--bpm)) ease-in 1, microtape 23s ease-in-out infinite, spinup 3.2s ease-out 1 !important;
+  animation: rampcut calc(var(--steps) * 15s / var(--bpm)) ease-in 1, microtape 23s ease-in-out infinite !important;
 }
-@keyframes rampcut { 0% { --cutoff: 120; } 100% { --cutoff: 3000; } }
-@keyframes spinup { 0% { translate: 0 calc(var(--rh) * 3); } 100% { translate: 0 0; } }
+@keyframes rampcut { 0% { --cutoff: 600; } 100% { --cutoff: 3000; } }
 </style>
 </head>
 <body>
@@ -8394,8 +8394,14 @@ function init(roll, wrap) {
   let nextStep = 0;
   let timer = 0;
   let lastSd = 0;
+  let lastMaster = -1;
   function tick() {
-    const { ctx, echoDelay, echoDelay2 } = audio();
+    const { ctx, echoDelay, echoDelay2, out } = audio();
+    const master = clamp(cssNum(docEl, "--master", 1), 0, 1.5);
+    if (Math.abs(master - lastMaster) > 0.001) {
+      out.gain.setTargetAtTime(0.85 * master, ctx.currentTime, 0.08);
+      lastMaster = master;
+    }
     const sd = stepSec();
     if (sd !== lastSd) {
       if (lastSd > 0)

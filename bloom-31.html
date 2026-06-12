@@ -24,6 +24,7 @@
 @property --form { syntax: "<number>"; inherits: true; initial-value: 1; }
 @property --root { syntax: "<number>"; inherits: true; initial-value: 60; }
 @property --sidechain { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --master { syntax: "<number>"; inherits: true; initial-value: 1; }
 @property --pan { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --width { syntax: "<number>"; inherits: true; initial-value: 0.3; }
 @property --verb { syntax: "<number>"; inherits: true; initial-value: 0.15; }
@@ -1434,8 +1435,14 @@ function init(roll, wrap) {
   let nextStep = 0;
   let timer = 0;
   let lastSd = 0;
+  let lastMaster = -1;
   function tick() {
-    const { ctx, echoDelay, echoDelay2 } = audio();
+    const { ctx, echoDelay, echoDelay2, out } = audio();
+    const master = clamp(cssNum(docEl, "--master", 1), 0, 1.5);
+    if (Math.abs(master - lastMaster) > 0.001) {
+      out.gain.setTargetAtTime(0.85 * master, ctx.currentTime, 0.08);
+      lastMaster = master;
+    }
     const sd = stepSec();
     if (sd !== lastSd) {
       if (lastSd > 0)
