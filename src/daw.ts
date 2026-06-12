@@ -1073,6 +1073,41 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
     URL.revokeObjectURL(a.href);
   }
 
+  // ---- embed stage API -------------------------------------------------------
+  // In embed mode a parent page can swap song content live via postMessage
+  // ({ midicss: { song?, css?, mixer?, bpm?, steps? } }). The DOM is the only
+  // data model, so the transport just keeps playing whatever is now painted —
+  // scrollytelling pages morph the song without ever stopping it.
+  if (embedded) {
+    window.addEventListener("message", (e: MessageEvent) => {
+      const data = e.data as
+        | { midicss?: { song?: string; css?: string; mixer?: string; bpm?: number; steps?: number } }
+        | null;
+      const m = data === null ? undefined : data.midicss;
+      if (m === undefined) return;
+      if (typeof m.bpm === "number") docEl.style.setProperty("--bpm", String(m.bpm));
+      if (typeof m.steps === "number") roll.style.setProperty("--steps", String(m.steps));
+      if (typeof m.css === "string") songCss.textContent = m.css;
+      if (typeof m.mixer === "string") {
+        const mx = document.querySelector("#mixer");
+        if (mx) mx.innerHTML = m.mixer;
+      }
+      if (typeof m.song === "string") {
+        for (const t of [...roll.querySelectorAll(".trk")]) t.remove();
+        roll.insertAdjacentHTML("afterbegin", m.song);
+        const first = tracks()[0];
+        if (first) setLive(first);
+        for (const trk of tracks()) {
+          const w = cssStr(trk, "--wave");
+          if (w.startsWith("url(")) loadSample(w);
+        }
+      }
+    });
+    // handshake: tell the parent we can receive stages (covers cached-iframe
+    // races where the parent misses the load event)
+    if (window.parent !== window) window.parent.postMessage({ midicssReady: true }, "*");
+  }
+
   // ---- boot ----------------------------------------------------------------
   setLive(live);
   // pre-decode any sample tracks so the first pass doesn't miss hits

@@ -1235,6 +1235,40 @@ function init(roll, wrap) {
     a.click();
     URL.revokeObjectURL(a.href);
   }
+  if (embedded) {
+    window.addEventListener("message", (e) => {
+      const data = e.data;
+      const m = data === null ? undefined : data.midicss;
+      if (m === undefined)
+        return;
+      if (typeof m.bpm === "number")
+        docEl.style.setProperty("--bpm", String(m.bpm));
+      if (typeof m.steps === "number")
+        roll.style.setProperty("--steps", String(m.steps));
+      if (typeof m.css === "string")
+        songCss.textContent = m.css;
+      if (typeof m.mixer === "string") {
+        const mx = document.querySelector("#mixer");
+        if (mx)
+          mx.innerHTML = m.mixer;
+      }
+      if (typeof m.song === "string") {
+        for (const t of [...roll.querySelectorAll(".trk")])
+          t.remove();
+        roll.insertAdjacentHTML("afterbegin", m.song);
+        const first = tracks()[0];
+        if (first)
+          setLive(first);
+        for (const trk of tracks()) {
+          const w = cssStr(trk, "--wave");
+          if (w.startsWith("url("))
+            loadSample(w);
+        }
+      }
+    });
+    if (window.parent !== window)
+      window.parent.postMessage({ midicssReady: true }, "*");
+  }
   setLive(live);
   for (const trk of tracks()) {
     const w = cssStr(trk, "--wave");

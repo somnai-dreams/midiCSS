@@ -2114,8 +2114,9 @@ for (let b = 0; b < 2; b++) {
   for (let i = 0; i < 16; i += 2) ex5Drums.push({ m: 81, s: o + i, l: 1, v: 0.3 });
 }
 const EX5_CSS = `
-/* the song rearranges itself by viewport — drag this embed's corner */
-@media (max-width: 560px) {
+/* the song rearranges itself by viewport — narrow the window (or let the
+   blog narrow this frame) and the drums dissolve while the tempo settles */
+@media (max-width: 480px) {
   html { --bpm: 84 !important; }
   .trk[data-name="Drums"] { --vol: 0 !important; }
 }
@@ -2218,3 +2219,20 @@ for (const song of [demo, bloom, ratio, blue, bloom31, mass, hammers, hammersX, 
   for (const t of song.tracks) count += t.notes.length;
   console.log(`${song.file} — ${(out.length / 1024).toFixed(1)} kB, ${count} notes`);
 }
+
+// blog.html: the scrollytelling essay. One persistent embedded player; each
+// chapter's song is injected as a stage payload and posted into the live
+// player as the reader scrolls — the transport never stops.
+const stagePayload = (s: Song): { title: string; bpm: number; steps: number; css: string; mixer: string; song: string } => ({
+  title: s.title,
+  bpm: s.bpm,
+  steps: s.steps,
+  css: s.css.trim(),
+  mixer: s.mixer.trim(),
+  song: s.tracks.map(track).join("\n"),
+});
+const stagesJson = JSON.stringify([ex1, ex2, ex3, ex4, ex5, ex6, ex7].map(stagePayload)).replace(/</g, "\\u003c");
+const blogTpl = await Bun.file("src/blog.html").text();
+const blogOut = blogTpl.replace("__STAGES__", () => stagesJson);
+await Bun.write("blog.html", blogOut);
+console.log(`blog.html — ${(blogOut.length / 1024).toFixed(1)} kB, 7 stages`);
