@@ -39,6 +39,10 @@ if (rollFound instanceof HTMLElement && wrapFound instanceof HTMLElement) {
 }
 
 function init(roll: HTMLElement, wrap: HTMLElement): void {
+  // ?embed — slim chrome for iframes: just a floating play control + the
+  // song's own mixer. Derived from the URL each load, never saved.
+  const embedded = location.search.includes("embed");
+  if (embedded) docEl.classList.add("embed");
   // ---- reading the song out of CSS ----------------------------------------
   const cssNum = (el: Element, prop: string, fallback: number): number => {
     const v = parseFloat(getComputedStyle(el).getPropertyValue(prop));
@@ -784,7 +788,7 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
   bar.id = "bar";
   bar.dataset.chrome = "1";
 
-  const playBtn = button("▶ play", () => toggle());
+  const playBtn = button(embedded ? "▶" : "▶ play", () => toggle());
   playBtn.id = "play";
 
   const bpmIn = numInput(bpm(), 40, 300, (v) => {
@@ -949,7 +953,7 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
     tick();
     timer = window.setInterval(tick, 30);
     docEl.classList.add("playing"); // transport-synced start for song animations
-    playBtn.textContent = "■ stop";
+    playBtn.textContent = embedded ? "■" : "■ stop";
     playBtn.classList.add("on");
     ph.style.display = "block";
     requestAnimationFrame(frame);
@@ -962,7 +966,7 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
     if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
     delete docEl.dataset.pass;
     docEl.classList.remove("playing");
-    playBtn.textContent = "▶ play";
+    playBtn.textContent = embedded ? "▶" : "▶ play";
     playBtn.classList.remove("on");
     ph.style.display = "none";
   }
@@ -1057,6 +1061,7 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
     for (const el of clone.querySelectorAll("[data-chrome]")) el.remove();
     for (const el of clone.querySelectorAll(".live")) el.classList.remove("live");
     clone.classList.remove("playing");
+    clone.classList.remove("embed");
     clone.removeAttribute("data-pass");
     const bodyClone = clone.querySelector("body");
     if (bodyClone) bodyClone.classList.remove("css-open");

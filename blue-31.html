@@ -68,8 +68,10 @@ body {
   border-radius: 6px;
   font: inherit;
   cursor: pointer;
+  transition: scale 0.15s cubic-bezier(0.2, 0, 0, 1), background 0.15s ease;
 }
 #bar button:hover { background: #2b3040; }
+#bar button:active { scale: 0.96; }
 #bar input, #bar select {
   background: #0e0f13;
   color: #cfd3dc;
@@ -187,6 +189,35 @@ body {
   width: 8px;
   cursor: ew-resize;
 }
+
+/* ---- embed mode (?embed): chrome slims to one floating play control ---- */
+html.embed body { position: relative; }
+html.embed #bar {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 20;
+  padding: 0;
+  background: none;
+  border: none;
+}
+html.embed #bar > :not(#play) { display: none; }
+html.embed #play {
+  width: 48px;
+  height: 44px; /* ≥40px hit area */
+  border-radius: 22px;
+  border: none;
+  font-size: 15px;
+  text-indent: 2px; /* optical centering for the ▶ glyph */
+  background: rgba(22, 25, 35, 0.88);
+  backdrop-filter: blur(6px);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 6px 18px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+html.embed #play.on { background: #3d52d5; }
+html.embed .hint { display: none; }
 
 /* live song-css editor (chrome) */
 #csspanel {
@@ -673,6 +704,9 @@ if (rollFound instanceof HTMLElement && wrapFound instanceof HTMLElement) {
   init(rollFound, wrapFound);
 }
 function init(roll, wrap) {
+  const embedded = location.search.includes("embed");
+  if (embedded)
+    docEl.classList.add("embed");
   const cssNum = (el, prop, fallback) => {
     const v = parseFloat(getComputedStyle(el).getPropertyValue(prop));
     return Number.isFinite(v) ? v : fallback;
@@ -1334,7 +1368,7 @@ function init(roll, wrap) {
   const bar = document.createElement("header");
   bar.id = "bar";
   bar.dataset.chrome = "1";
-  const playBtn = button("▶ play", () => toggle());
+  const playBtn = button(embedded ? "▶" : "▶ play", () => toggle());
   playBtn.id = "play";
   const bpmIn = numInput(bpm(), 40, 300, (v) => {
     docEl.style.setProperty("--bpm", String(v));
@@ -1468,7 +1502,7 @@ function init(roll, wrap) {
     tick();
     timer = window.setInterval(tick, 30);
     docEl.classList.add("playing");
-    playBtn.textContent = "■ stop";
+    playBtn.textContent = embedded ? "■" : "■ stop";
     playBtn.classList.add("on");
     ph.style.display = "block";
     requestAnimationFrame(frame);
@@ -1481,7 +1515,7 @@ function init(roll, wrap) {
       speechSynthesis.cancel();
     delete docEl.dataset.pass;
     docEl.classList.remove("playing");
-    playBtn.textContent = "▶ play";
+    playBtn.textContent = embedded ? "▶" : "▶ play";
     playBtn.classList.remove("on");
     ph.style.display = "none";
   }
@@ -1579,6 +1613,7 @@ function init(roll, wrap) {
     for (const el of clone.querySelectorAll(".live"))
       el.classList.remove("live");
     clone.classList.remove("playing");
+    clone.classList.remove("embed");
     clone.removeAttribute("data-pass");
     const bodyClone = clone.querySelector("body");
     if (bodyClone)

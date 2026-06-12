@@ -8,125 +8,206 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { color-scheme: dark; }
 body {
-  background: #0e0f13;
-  color: #c6cbd6;
-  font: 16px/1.65 ui-monospace, "SF Mono", Menlo, monospace;
-  padding: 56px 20px 120px;
+  background: #131118;
+  color: #d9d3c7;
+  font: 17px/1.75 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+  padding: 96px 22px 160px;
 }
-article { max-width: 780px; margin: 0 auto; }
-h1 { font-size: 30px; line-height: 1.2; color: #f0f2f7; letter-spacing: -0.5px; }
-.sub { color: #7b8294; margin: 10px 0 38px; }
-h2 { font-size: 19px; color: #e7eaf2; margin: 54px 0 12px; }
-h2 .n { color: #5e72ee; margin-right: 8px; }
-p { margin: 12px 0; }
-p code, li code { background: #1a1d27; border: 1px solid #262b3a; border-radius: 4px; padding: 1px 5px; font-size: 14px; }
+article { max-width: 660px; margin: 0 auto; }
+
+h1 {
+  font-size: clamp(36px, 6vw, 52px);
+  line-height: 1.12;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #f3eee2;
+  text-wrap: balance;
+}
+.sub {
+  font-style: italic;
+  color: #968fa3;
+  margin: 18px 0 0;
+  font-size: 18px;
+  text-wrap: pretty;
+}
+.lede { margin-top: 56px; }
+
+p { margin: 18px 0; text-wrap: pretty; }
+em { color: #e9e3d5; }
+strong { color: #efe9da; font-weight: 600; }
+
+.ch { margin-top: 110px; }
+.ch h2 { position: relative; font-size: 25px; font-weight: 500; color: #efe9da; text-wrap: balance; }
+.ch h2::before {
+  content: attr(data-n);
+  display: block;
+  font-size: 76px;
+  line-height: 1;
+  font-style: italic;
+  font-weight: 400;
+  color: hsl(var(--a) 65% 70% / 0.22);
+  margin: 0 0 2px -4px;
+  font-variant-numeric: tabular-nums;
+}
+.ch h2::after {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 2px;
+  margin-top: 14px;
+  border-radius: 1px;
+  background: hsl(var(--a) 60% 62% / 0.55);
+}
+
+p code, li code {
+  font: 13.5px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  background: rgba(255, 255, 255, 0.055);
+  border-radius: 5px;
+  padding: 2.5px 6px;
+  color: #cfc9bd;
+}
 pre {
-  background: #12141b;
-  border: 1px solid #232733;
-  border-radius: 8px;
-  padding: 14px 16px;
+  font: 13px/1.6 ui-monospace, "SF Mono", Menlo, monospace;
+  color: #b4aec6;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 16px 18px;
   overflow-x: auto;
-  font-size: 13px;
-  line-height: 1.55;
-  margin: 16px 0;
-  color: #aeb6c8;
+  margin: 22px 0;
 }
-pre .c { color: #5b6375; }
+pre .c { color: #6b6478; }
+
+.embed { margin: 26px 0 8px; }
 iframe {
   width: 100%;
-  height: 330px;
-  border: 1px solid #2a2f3e;
-  border-radius: 8px;
+  height: 300px;
+  border: none;
+  border-radius: 10px;
   background: #0e0f13;
   display: block;
+  outline: 1px solid rgba(255, 255, 255, 0.1);
+  outline-offset: -1px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 32px rgba(0, 0, 0, 0.34);
 }
-.embed { margin: 18px 0 6px; }
 .resizable {
   resize: horizontal;
   overflow: hidden;
   width: 100%;
   min-width: 330px;
   max-width: 100%;
-  padding-right: 14px;
-  border-right: 6px solid #2a2f3e;
-  border-radius: 8px;
+  padding: 6px;
+  border-radius: 16px; /* concentric: iframe 10 + padding 6 */
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
-.cap { font-size: 12.5px; color: #6b7283; margin: 8px 0 0; }
-.cap a { color: #7a8cf0; text-decoration: none; }
-.cap a:hover { text-decoration: underline; }
-.note { border-left: 3px solid #5e72ee; background: #131722; padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 18px 0; font-size: 14.5px; }
-hr { border: none; border-top: 1px solid #232733; margin: 56px 0; }
-ul { margin: 12px 0 12px 22px; }
-li { margin: 6px 0; }
-a { color: #7a8cf0; }
+.cap {
+  font-size: 14px;
+  font-style: italic;
+  color: #847d91;
+  margin: 12px 0 0;
+}
+
+a { color: hsl(var(--a, 250) 70% 74%); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: hsl(var(--a, 250) 70% 74% / 0.35); transition: text-decoration-color 0.15s ease; }
+a:hover { text-decoration-color: hsl(var(--a, 250) 70% 74%); }
+
+.outro { margin-top: 120px; }
+.outro h2 { font-size: 25px; font-weight: 500; color: #efe9da; margin-bottom: 6px; }
+ul { margin: 18px 0 18px 4px; list-style: none; }
+li { margin: 14px 0; padding-left: 22px; position: relative; text-wrap: pretty; }
+li::before { content: "♪"; position: absolute; left: 0; top: 1px; color: hsl(var(--a, 250) 60% 70% / 0.6); font-size: 14px; }
+.note {
+  font-size: 15.5px;
+  background: rgba(255, 226, 170, 0.045);
+  box-shadow: inset 0 0 0 1px rgba(255, 226, 170, 0.1);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 28px 0;
+}
+.fin { font-style: italic; color: #968fa3; margin-top: 40px; font-size: 16px; }
 </style>
 </head>
 <body>
 <article>
 
-<h1>The Markup Is the Music</h1>
-<p class="sub">midiCSS — a DAW where the HTML/CSS file is the song format. Every player below is a complete, self-contained instrument: the embed <em>is</em> the song <em>is</em> the editor. Press ▶ in each one (and stop the last one, or don't).</p>
+<h1>The Markup Is the&nbsp;Music</h1>
+<p class="sub">A piece of music you can open in a text editor. Seven small songs, each one a complete instrument, each one explaining itself.</p>
 
-<p>The premise: a note is a <code>&lt;b&gt;</code> element placed on a CSS grid. The grid row is pitch (one row = one semitone), the grid column is time (one column = a 16th note). Tempo, instruments, mix, and arrangement are CSS custom properties. The only JavaScript is a player that reads the <em>rendered geometry</em> — a note sounds exactly where the browser painted it — and an editor that writes inline styles back. Saving a song re-serializes the document. There is no other data model. The file you're looking at is the file you're hearing.</p>
+<div class="lede">
+<p>The premise: a note is a <code>&lt;b&gt;</code> element placed on a CSS grid. The grid row is pitch — one row, one semitone. The grid column is time — one column, one sixteenth note. Tempo, instruments, mix, and arrangement are custom properties. The only JavaScript is a player that reads the <em>rendered geometry</em> — a note sounds exactly where the browser painted it — and an editor that writes inline styles back. Saving a song re-serializes the document. There is no other data model. The file you are looking at is the file you are hearing.</p>
+<p>That one decision — playback reads computed style and geometry, never a hidden JSON — means the entire CSS engine becomes a music system. What follows climbs that ladder, from a single note to music that exists only in selectors. Press play in each piece as you go; stop the last one first, or let them overlap, which is its own kind of piece.</p>
+</div>
 
-<p>That one decision — playback reads computed style and geometry, not some hidden JSON — means the entire CSS engine becomes a music system. This post climbs that ladder, from one note to music that exists only in selectors.</p>
-
-<h2><span class="n">01</span>hello, note</h2>
-<p>The smallest possible song. One track (a <code>&lt;section&gt;</code>), one note (a <code>&lt;b&gt;</code>), placed with <code>grid-area</code>: row 24 is C4, columns 1 through 17 make it a whole bar long. No song-specific CSS at all.</p>
+<section class="ch" style="--a:205">
+<h2 data-n="01">hello, note</h2>
+<p>The smallest possible song. One track (a <code>&lt;section&gt;</code>), one note (a <code>&lt;b&gt;</code>), placed with <code>grid-area</code>: row 24 is middle C, columns 1 through 17 hold it for the whole bar. There is no song-specific CSS at all — the markup alone is the music.</p>
 <pre>&lt;main id="roll" style="--steps:16"&gt;
   &lt;section class="trk" data-name="Note" style="--wave:sine;--vol:0.4;--hue:200"&gt;
     &lt;b style="grid-area:24/1/25/17"&gt;&lt;/b&gt;
   &lt;/section&gt;
 &lt;/main&gt;</pre>
-<div class="embed"><iframe src="examples/ex1-hello.html" loading="lazy"></iframe></div>
-<p class="cap">Drag on the grid to draw more notes — the editor writes the same markup you just read. <a href="examples/ex1-hello.html" target="_blank">open this file directly ↗</a></p>
+<div class="embed"><iframe src="examples/ex1-hello.html?embed" loading="lazy" title="example: one note"></iframe></div>
+<p class="cap">Drag on the grid to draw more notes — the editor writes the same markup you just read. <a href="examples/ex1-hello.html" target="_blank">open the file ↗</a></p>
+</section>
 
-<h2><span class="n">02</span>rows are pitch, columns are time</h2>
-<p>A melody is just elements at different rows and columns. Up is higher, right is later. This is the entire file format — you can write a tune in any text editor, and the browser renders the piano roll with zero JavaScript. The script only adds sound and mouse handling.</p>
-<pre>&lt;b style="grid-area:24/1/25/5"&gt;&lt;/b&gt;   <span class="c">&lt;!-- C4, beat 1 --&gt;</span>
-&lt;b style="grid-area:20/5/21/9"&gt;&lt;/b&gt;   <span class="c">&lt;!-- E4, beat 2 --&gt;</span>
-&lt;b style="grid-area:17/9/18/13"&gt;&lt;/b&gt;  <span class="c">&lt;!-- G4, beat 3 --&gt;</span>
-&lt;b style="grid-area:12/13/13/17"&gt;&lt;/b&gt; <span class="c">&lt;!-- C5, beat 4 --&gt;</span></pre>
-<div class="embed"><iframe src="examples/ex2-melody.html" loading="lazy"></iframe></div>
-<p class="cap"><a href="examples/ex2-melody.html" target="_blank">open this file directly ↗</a></p>
+<section class="ch" style="--a:160">
+<h2 data-n="02">rows are pitch, columns are time</h2>
+<p>A melody is elements at different rows and columns. Up is higher; right is later. That is the entire file format — you can write a tune in any text editor, and the browser renders the score with no JavaScript at all. The script only adds sound and a mouse.</p>
+<pre>&lt;b style="grid-area:24/1/25/5"&gt;&lt;/b&gt;   <span class="c">&lt;!-- C4, beat one --&gt;</span>
+&lt;b style="grid-area:20/5/21/9"&gt;&lt;/b&gt;   <span class="c">&lt;!-- E4, beat two --&gt;</span>
+&lt;b style="grid-area:17/9/18/13"&gt;&lt;/b&gt;  <span class="c">&lt;!-- G4, beat three --&gt;</span>
+&lt;b style="grid-area:12/13/13/17"&gt;&lt;/b&gt; <span class="c">&lt;!-- C5, beat four --&gt;</span></pre>
+<div class="embed"><iframe src="examples/ex2-melody.html?embed" loading="lazy" title="example: a melody"></iframe></div>
+<p class="cap"><a href="examples/ex2-melody.html" target="_blank">open the file ↗</a></p>
+</section>
 
-<h2><span class="n">03</span>tracks are sections, sound is properties</h2>
-<p>Instruments aren't config — they're custom properties on the track element. <code>--wave</code> picks the voice (oscillators, wavetables like <code>ep</code> and <code>brass</code>, drum synthesis, even <code>url(sample.wav)</code>), and <code>--cutoff</code>, <code>--spread</code>, <code>--attack</code>, <code>--verb</code>, <code>--echo</code> shape it. <code>--bpm</code> lives on <code>&lt;html&gt;</code>. Change any of them in devtools while it plays; the player reads computed values continuously.</p>
+<section class="ch" style="--a:280">
+<h2 data-n="03">tracks are sections, sound is properties</h2>
+<p>Instruments are not configuration — they are custom properties on the track element. <code>--wave</code> chooses the voice (oscillators, wavetables like <code>ep</code> and <code>brass</code>, drum synthesis, even <code>url(sample.wav)</code>); <code>--cutoff</code>, <code>--spread</code>, <code>--attack</code>, <code>--verb</code> shape it; <code>--bpm</code> lives on <code>&lt;html&gt;</code>. Change any of them in devtools while it plays — the player reads computed values continuously.</p>
 <pre>&lt;html style="--bpm:120"&gt;
 ...
 &lt;section class="trk" data-name="Melody" style="--wave:pulse25;--vol:0.2;--cutoff:2400"&gt;
 &lt;section class="trk" data-name="Bass"   style="--wave:triangle;--vol:0.3"&gt;</pre>
-<div class="embed"><iframe src="examples/ex3-tracks.html" loading="lazy"></iframe></div>
-<p class="cap"><a href="examples/ex3-tracks.html" target="_blank">open this file directly ↗</a></p>
+<div class="embed"><iframe src="examples/ex3-tracks.html?embed" loading="lazy" title="example: tracks and properties"></iframe></div>
+<p class="cap"><a href="examples/ex3-tracks.html" target="_blank">open the file ↗</a></p>
+</section>
 
-<h2><span class="n">04</span>the cascade is a mixing console</h2>
-<p>Because volume is a property, muting is a selector. Because pitch is geometry, transposition is a transform — one row is a semitone, so <strong>one pixel is about six cents</strong>, which makes the format natively microtonal. And since <code>translate</code> composes with <code>transform</code>, the toggles below stack: octave up <em>and</em> a quarter-tone sharp.</p>
+<section class="ch" style="--a:330">
+<h2 data-n="04">the cascade is a mixing console</h2>
+<p>Because volume is a property, muting is a selector. Because pitch is geometry, transposition is a transform — one row is a semitone, so <strong>one pixel is about six cents</strong>, which makes the format natively microtonal. And since <code>translate</code> composes with <code>transform</code>, the toggles below stack: an octave up <em>and</em> a quarter-tone sharp, if you like your thirds blue.</p>
 <pre>body:has(#mute-bass:checked) .trk[data-name="Bass"] { --vol: 0 !important; }
 body:has(#octave:checked)  .trk[data-name="Melody"] { transform: translateY(calc(var(--rh) * -12)); }
 body:has(#quarter:checked) .trk[data-name="Melody"] { translate: 0 calc(var(--rh) * -0.5); }</pre>
-<div class="embed"><iframe src="examples/ex4-cascade.html" loading="lazy"></iframe></div>
-<p class="cap">No JavaScript involved in any of those checkboxes — it's the cascade. <a href="examples/ex4-cascade.html" target="_blank">open this file directly ↗</a></p>
+<div class="embed"><iframe src="examples/ex4-cascade.html?embed" loading="lazy" title="example: cascade as mixer"></iframe></div>
+<p class="cap">No JavaScript is involved in those checkboxes. It is only the cascade. <a href="examples/ex4-cascade.html" target="_blank">open the file ↗</a></p>
+</section>
 
-<h2><span class="n">05</span>media queries are arrangements</h2>
-<p>If the mix is CSS, then the song can respond to anything CSS can see — including the viewport. This embed sits in a resizable wrapper: <strong>drag its right edge narrower</strong> while it plays and the drums fade out and the tempo drops. The same file is a different arrangement on a phone.</p>
+<section class="ch" style="--a:120">
+<h2 data-n="05">media queries are arrangements</h2>
+<p>If the mix is CSS, the song can respond to anything CSS can see — including the width of its own window. This embed sits in a resizable frame: <strong>drag its bottom-right corner narrower</strong> while it plays, and the drums dissolve while the tempo settles. The same file is a different arrangement on a phone.</p>
 <pre>@media (max-width: 560px) {
   html { --bpm: 84 !important; }
   .trk[data-name="Drums"] { --vol: 0 !important; }
 }</pre>
-<div class="embed resizable"><iframe src="examples/ex5-responsive.html" loading="lazy"></iframe></div>
-<p class="cap">↕ drag the right edge of this embed. <a href="examples/ex5-responsive.html" target="_blank">open this file directly ↗</a></p>
+<div class="embed resizable"><iframe src="examples/ex5-responsive.html?embed" loading="lazy" title="example: responsive arrangement"></iframe></div>
+<p class="cap">Drag the corner of the frame above, then let it back out. <a href="examples/ex5-responsive.html" target="_blank">open the file ↗</a></p>
+</section>
 
-<h2><span class="n">06</span>animations are automation</h2>
-<p>Synth parameters are registered properties, so <code>@keyframes</code> are automation lanes. This bassline's filter is swept by an animation — acid as a stylesheet rule — and the kick pumps the whole mix through one property, <code>--duck</code>. The tape toggle animates a transform on every track: pitch warble, and because the engine re-reads geometry while notes sound, <em>held</em> notes bend live.</p>
+<section class="ch" style="--a:95">
+<h2 data-n="06">animations are automation</h2>
+<p>Synth parameters are registered properties, so <code>@keyframes</code> are automation lanes. This bassline's filter is swept by an animation — acid as a stylesheet rule — and the kick pumps everything else through one property, <code>--duck</code>. The tape toggle animates a transform on every track: pitch warble — and because the engine keeps re-reading geometry while notes sound, <em>held</em> notes bend live.</p>
 <pre>html.playing .trk[data-name="Acid"] { animation: sweep 3.1s ease-in-out infinite; }
 @keyframes sweep { 0%, 100% { --cutoff: 250; } 50% { --cutoff: 2600; } }
 
 html { --duck: 0.4; }  <span class="c">/* every kick ducks everything else */</span></pre>
-<div class="embed"><iframe src="examples/ex6-automation.html" loading="lazy"></iframe></div>
-<p class="cap"><a href="examples/ex6-automation.html" target="_blank">open this file directly ↗</a></p>
+<div class="embed"><iframe src="examples/ex6-automation.html?embed" loading="lazy" title="example: animation as automation"></iframe></div>
+<p class="cap"><a href="examples/ex6-automation.html" target="_blank">open the file ↗</a></p>
+</section>
 
-<h2><span class="n">07</span>music from nowhere</h2>
-<p>Two endgames at once. The first track's markup is <em>eight empty elements</em> — every pitch and position below comes from one rule using <code>sibling-index()</code> and <code>mod()</code>: the stylesheet is the composer (Chrome 138+). And the second track has no notes at all until you tick the box: the player also reads a track's <code>::before</code> and <code>::after</code> as notes, so a checkbox can summon music that exists nowhere in the document tree.</p>
+<section class="ch" style="--a:265">
+<h2 data-n="07">music from nowhere</h2>
+<p>Two endgames at once. The first track's markup is <em>eight empty elements</em> — every pitch and every position comes from a single rule built on <code>sibling-index()</code> and <code>mod()</code>: the stylesheet is the composer. And the second track holds no notes at all until you tick the box — the player also hears a track's <code>::before</code> and <code>::after</code>, so a checkbox can summon music that exists nowhere in the document tree.</p>
 <pre>.trk[data-name="Formula"] b {
   grid-column: calc((sibling-index() - 1) * 2 + 1);
   grid-row: calc(28 - mod(sibling-index() * 5, 12));
@@ -134,22 +215,23 @@ html { --duck: 0.4; }  <span class="c">/* every kick ducks everything else */</s
 body:has(#summon:checked) .trk[data-name="Ghost"]::before {
   content: ""; grid-area: 36 / 1 / 37 / 17;
 }</pre>
-<div class="embed"><iframe src="examples/ex7-nowhere.html" loading="lazy"></iframe></div>
-<p class="cap"><a href="examples/ex7-nowhere.html" target="_blank">open this file directly ↗</a></p>
+<div class="embed"><iframe src="examples/ex7-nowhere.html?embed" loading="lazy" title="example: stylesheet-composed music"></iframe></div>
+<p class="cap"><a href="examples/ex7-nowhere.html" target="_blank">open the file ↗</a></p>
+</section>
 
-<hr>
-
-<h2>where this ladder goes</h2>
-<p>Stack all of it — plus per-note velocity, swing as fractional-step transforms, just-intonation detunes, samples as data URIs, a <code>data-pass</code> attribute that turns loop counts into song structure — and you get actual records, each one still a single HTML file you can open, edit, and <code>git diff</code>:</p>
+<section class="outro" style="--a:35">
+<h2>where the ladder goes</h2>
+<p>Stack all of it — per-note velocity, swing as fractional-step transforms, just-intonation detunes, samples baked in as data URIs, a <code>data-pass</code> attribute that turns loop counts into song structure — and you get records. Each one is still a single HTML file you can open, edit, and <code>git diff</code>:</p>
 <ul>
-  <li><a href="pump.html" target="_blank">PUMP</a> — filter house with a sampled 909 kit, sidechain pump, and an 8-pass arrangement written in attribute selectors</li>
-  <li><a href="hammers-x.html" target="_blank">HAMMERS X</a> — 7,291 notes; every hit a microtonal cluster; acid, tape and cathedral as checkboxes</li>
+  <li><a href="pump.html" target="_blank">PUMP</a> — filter house with a sampled 909 kit, a sidechain pump, and an eight-pass arrangement written in attribute selectors</li>
+  <li><a href="hammers-x.html" target="_blank">HAMMERS X</a> — 7,291 notes, every hit a microtonal cluster; acid, tape and cathedral as checkboxes</li>
   <li><a href="blue-31.html" target="_blank">BLUE 31</a> — microtonal jazz: quarter-tone blue notes, septimal sevenths, and a <em>quantize</em> toggle that strips the humanity off with one rule</li>
-  <li><a href="selector.html" target="_blank">SELECTOR</a> — acid techno whose markup contains <strong>zero notes</strong>: the entire composition is selector math</li>
-  <li><a href="ghost-ratio.html" target="_blank">GHOST RATIO</a> — the harmonic series in just intonation, with a scaleY animation that folds the spectrum into unison</li>
+  <li><a href="selector.html" target="_blank">SELECTOR</a> — acid techno whose markup contains zero notes; the composition is selector arithmetic</li>
+  <li><a href="ghost-ratio.html" target="_blank">GHOST RATIO</a> — the harmonic series in just intonation, with a scaleY animation that folds the whole spectrum into unison</li>
 </ul>
-<p class="note">Party trick: <code>sonify.js</code> in this repo is a console paste that treats <em>any website's</em> layout as one of these scores — left edge is time, height is pitch, tags are instruments. Every page already is a midiCSS song; nobody's pressed play on them.</p>
-<p class="sub">Everything here is one repo: strict-TS player (~700 lines), a build script that composes songs as data, and the songs themselves. The format is the thesis: if pitch is geometry and mix is the cascade, then everything CSS can do — respond, animate, compose — music can do too.</p>
+<p class="note">Party trick: <code>sonify.js</code> in this repo is a console paste that reads <em>any website's</em> layout as one of these scores — left edge is time, height is pitch, tags are instruments. Every page already is one of these songs. Nobody had pressed play.</p>
+<p class="fin">If pitch is geometry and the mix is the cascade, then everything CSS can do — respond, animate, compose — music can do too. The stylesheet was a sequencer all along.</p>
+</section>
 
 </article>
 </body>
