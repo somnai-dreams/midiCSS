@@ -1461,9 +1461,12 @@ html.playing .trk[data-name="Bass"] { animation: cutdrift 9.3s ease-in-out infin
    also pumps the whole mix via --duck. ========== */
 html { --form: 8; --duck: 0.35; }
 /* 0: the full wall arrives drumless — the kit holds back exactly one pass.
-   transition:none so the kit is silent from the first sample (no fade-out);
-   leaving pass 0, the un-mute regains the normal fade and the kit eases in. */
+   transition:none so the kit is silent from the first sample. */
 html[data-pass="0"] .trk[data-name="Kit"] { --vol: 0 !important; transition: none; }
+/* entrances slam, exits fade: the kit hits pass 1 at full volume on the
+   downbeat; the pass-5 drop brings kit and bass back instantly */
+html[data-pass="1"] .trk[data-name="Kit"] { transition: none; }
+html[data-pass="5"] :is(.trk[data-name="Kit"], .trk[data-name="Bass"]) { transition: none; }
 /* 4: breakdown — drums and bass out, everything swims */
 html[data-pass="4"] :is(.trk[data-name="Kit"], .trk[data-name="Bass"]) { --vol: 0 !important; }
 html[data-pass="4"] .trk { --verb: 0.55 !important; }
@@ -1851,8 +1854,11 @@ html { --form: 8; --duck: 0.45; }
 /* 0: the wall rides the ramp (stabs included); rhythm section silent from
    sample one, hook held back */
 html[data-pass="0"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"], .trk[data-name="Vox"], .trk[data-name="Hook"]) { --vol: 0 !important; transition: none; }
-/* 1: the floor lands, full band — hook saves itself for pass 2 */
+/* 1: the floor lands, full band — hook saves itself for pass 2.
+   Entrances slam, exits fade: no fade-in for the rhythm section. */
 html[data-pass="1"] :is(.trk[data-name="Hook"], .trk[data-name="Vox"]) { --vol: 0 !important; }
+html[data-pass="1"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"]) { transition: none; }
+html[data-pass="5"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"]) { transition: none; }
 /* 4: breakdown — floor drops out, stabs and pads swim */
 html[data-pass="4"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"]) { --vol: 0 !important; }
 html[data-pass="4"] .trk { --verb: 0.55 !important; }

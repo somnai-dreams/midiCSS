@@ -291,8 +291,11 @@ html { --form: 8; --duck: 0.45; }
 /* 0: the wall rides the ramp (stabs included); rhythm section silent from
    sample one, hook held back */
 html[data-pass="0"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"], .trk[data-name="Vox"], .trk[data-name="Hook"]) { --vol: 0 !important; transition: none; }
-/* 1: the floor lands, full band — hook saves itself for pass 2 */
+/* 1: the floor lands, full band — hook saves itself for pass 2.
+   Entrances slam, exits fade: no fade-in for the rhythm section. */
 html[data-pass="1"] :is(.trk[data-name="Hook"], .trk[data-name="Vox"]) { --vol: 0 !important; }
+html[data-pass="1"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"]) { transition: none; }
+html[data-pass="5"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"]) { transition: none; }
 /* 4: breakdown — floor drops out, stabs and pads swim */
 html[data-pass="4"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"]) { --vol: 0 !important; }
 html[data-pass="4"] .trk { --verb: 0.55 !important; }
