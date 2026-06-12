@@ -1740,7 +1740,7 @@ const PUMP_MIXER = `
 <label><input type="checkbox" id="mute-kick"> mute kick</label>
 <label><input type="checkbox" id="mute-hats"> mute hats</label>
 <label><input type="checkbox" id="mute-clap"> mute clap</label>
-<label><input type="checkbox" id="mute-vox"> mute vox</label>
+<label><input type="checkbox" id="mute-vox" checked> mute vox</label>
 <label><input type="checkbox" id="acid" checked> acid</label>
 <label><input type="checkbox" id="tape"> tape</label>
 <label><input type="checkbox" id="cathedral"> cathedral</label>

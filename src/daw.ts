@@ -297,6 +297,9 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
       brass: mkWave([1, 0.68, 0.58, 0.34, 0.26, 0.18, 0.13, 0.09, 0.06, 0.04, 0.025, 0.015]),
       glass: mkWave([1, 0, 0.05, 0.45, 0, 0.02, 0, 0, 0.28, 0, 0, 0.12]),
     };
+    // pre-warm the OS speech service so a voice track's first utterance
+    // doesn't stall the main thread mid-playback
+    if (typeof speechSynthesis !== "undefined") speechSynthesis.getVoices();
     engine = { ctx, out, duck, verb, echo, echoDelay, echoDelay2, noise, kickCurve, waves };
     return engine;
   };
@@ -321,6 +324,8 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
       const text = nb.el === null ? "" : (nb.el.textContent ?? "").trim();
       if (text === "") return;
       window.setTimeout(() => {
+        // drop rather than queue: a backed-up TTS engine stalls the tab
+        if (!playing || speechSynthesis.speaking || speechSynthesis.pending) return;
         const u = new SpeechSynthesisUtterance(text);
         u.pitch = clamp(Math.pow(2, (nb.midi - 60) / 12), 0, 2);
         u.rate = 0.9;
@@ -838,6 +843,7 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
     playing = false;
     window.clearInterval(timer);
     voices = [];
+    if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
     delete docEl.dataset.pass;
     docEl.classList.remove("playing");
     playBtn.textContent = "▶ play";
