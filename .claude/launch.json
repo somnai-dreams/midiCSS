@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "midicss",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "serve.ts"],
+      "port": 8642
+    }
+  ]
+}

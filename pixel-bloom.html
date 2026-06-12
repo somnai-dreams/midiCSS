@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html lang="en" style="--bpm:172">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIXEL BLOOM</title>
+<style>
+/* midiCSS — the layout is the song. Rows are pitches (row 1 = B5 … row 48 = C2),
+   columns are 16th-note steps. Notes are <b> grid items; everything musical is
+   encoded in CSS custom properties (--bpm, --steps, --wave, --vol, --hue, --vel). */
+
+/* Registered properties: real interpolable numbers, so @keyframes on them
+   are automation lanes. Cascade = mix hierarchy: !important (mutes, media
+   queries) beats animations, animations beat inline base values. */
+@property --vol { syntax: "<number>"; inherits: true; initial-value: 0.3; }
+@property --bpm { syntax: "<number>"; inherits: true; initial-value: 120; }
+@property --vel { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --spread { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --cutoff { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --attack { syntax: "<number>"; inherits: true; initial-value: 0.005; }
+@property --release { syntax: "<number>"; inherits: true; initial-value: 0.04; }
+@property --loop { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --duck { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --form { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --pan { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --width { syntax: "<number>"; inherits: true; initial-value: 0.3; }
+@property --verb { syntax: "<number>"; inherits: true; initial-value: 0.15; }
+@property --echo { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --echo-time { syntax: "<number>"; inherits: true; initial-value: 3; }
+@property --fenv { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --vibrato { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --vib-rate { syntax: "<number>"; inherits: true; initial-value: 5; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { --cw: 18px; --rh: 16px; --panelw: min(400px, 80vw); color-scheme: dark; }
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #0e0f13;
+  color: #cfd3dc;
+  font: 13px/1.45 ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ---- toolbar (chrome, rebuilt by JS on every load) ---- */
+#bar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #15171d;
+  border-bottom: 1px solid #232733;
+}
+#bar label { display: inline-flex; align-items: center; gap: 5px; color: #7b8294; font-size: 11px; }
+#bar button {
+  padding: 5px 11px;
+  background: #232733;
+  color: #cfd3dc;
+  border: 1px solid #303544;
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+#bar button:hover { background: #2b3040; }
+#bar input, #bar select {
+  background: #0e0f13;
+  color: #cfd3dc;
+  border: 1px solid #303544;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font: inherit;
+}
+#bar input[type="number"] { width: 58px; }
+#bar input[type="range"] { width: 80px; padding: 0; border: none; background: none; }
+#bar input[type="text"] { width: 130px; }
+#bar button.on { background: #3d52d5; border-color: #5e72ee; color: #fff; }
+.chip { display: inline-flex; align-items: center; gap: 6px; }
+.chip::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: hsl(var(--hue) 70% 58%); }
+.chip.on { border-color: hsl(var(--hue) 70% 58%); background: #2b3040; }
+.hint { margin-left: auto; color: #565d6e; font-size: 11px; }
+
+/* per-song css-only mixer (static song markup — works with JS off) */
+#mixer { flex: none; display: flex; flex-wrap: wrap; gap: 14px; padding: 6px 12px; background: #12141a; border-bottom: 1px solid #232733; font-size: 11px; color: #7b8294; }
+#mixer label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+#mixer input { accent-color: #5e72ee; }
+#mixer a { color: #7a8cf0; text-decoration: none; }
+#mixer a:hover { text-decoration: underline; }
+
+/* ---- piano roll ---- */
+#wrap { flex: 1; display: flex; align-items: flex-start; overflow: auto; }
+
+#keys {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  flex: none;
+  display: grid;
+  grid-template-rows: repeat(48, var(--rh));
+  width: 44px;
+  height: calc(48 * var(--rh));
+  background: #15171d;
+  border-right: 1px solid #232733;
+}
+#keys div { font-size: 9px; line-height: var(--rh); padding-left: 6px; color: #7b8294; border-bottom: 1px solid #1a1d25; }
+#keys div.bk { background: #10131a; }
+#keys div.c { color: #aeb6c6; }
+
+#roll {
+  position: relative;
+  flex: none;
+  width: calc(var(--steps) * var(--cw));
+  height: calc(48 * var(--rh));
+  cursor: crosshair;
+  background-color: #0e0f13;
+  background-image:
+    /* bar lines */
+    repeating-linear-gradient(to right, #303544 0 1px, transparent 1px calc(var(--cw) * 16)),
+    /* beat lines */
+    repeating-linear-gradient(to right, #232733 0 1px, transparent 1px calc(var(--cw) * 4)),
+    /* row lines */
+    repeating-linear-gradient(to bottom, #1a1d25 0 1px, transparent 1px var(--rh)),
+    /* black-key rows: descending from B per octave -> A#, G#, F#, D#, C# */
+    repeating-linear-gradient(to bottom,
+      transparent 0 var(--rh),
+      #13151c var(--rh) calc(var(--rh) * 2),
+      transparent calc(var(--rh) * 2) calc(var(--rh) * 3),
+      #13151c calc(var(--rh) * 3) calc(var(--rh) * 4),
+      transparent calc(var(--rh) * 4) calc(var(--rh) * 5),
+      #13151c calc(var(--rh) * 5) calc(var(--rh) * 6),
+      transparent calc(var(--rh) * 6) calc(var(--rh) * 8),
+      #13151c calc(var(--rh) * 8) calc(var(--rh) * 9),
+      transparent calc(var(--rh) * 9) calc(var(--rh) * 10),
+      #13151c calc(var(--rh) * 10) calc(var(--rh) * 11),
+      transparent calc(var(--rh) * 11) calc(var(--rh) * 12)
+    );
+}
+
+/* ---- tracks: stacked transparent grids sharing the roll's coordinates ---- */
+.trk {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: repeat(48, var(--rh));
+  grid-template-columns: repeat(var(--steps), var(--cw));
+  grid-auto-columns: var(--cw);
+  pointer-events: none;
+}
+.trk.live { z-index: 2; }
+
+/* ---- notes: the data itself ---- */
+.trk b {
+  position: relative;
+  display: block;
+  min-width: 0;
+  border-radius: 3px;
+  border: 1px solid hsl(var(--hue) 75% 72% / 0.9);
+  background: hsl(var(--hue) 65% 56% / 0.92);
+  box-shadow: inset 0 1px 0 hsl(var(--hue) 80% 82% / 0.35);
+  opacity: 0.22;
+  /* notes may carry text (lyrics for --wave:voice tracks) */
+  font: 8px/1.75 ui-monospace, Menlo, monospace;
+  color: #000c;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.trk.live b {
+  opacity: calc(0.5 + 0.5 * var(--vel, 1));
+  pointer-events: auto;
+  cursor: grab;
+}
+.trk.live b:hover { filter: brightness(1.25); }
+.trk.live b::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  right: -3px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+/* live song-css editor (chrome) */
+#csspanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--panelw);
+  display: none;
+  flex-direction: column;
+  background: #15171d;
+  border-left: 1px solid #232733;
+  z-index: 10;
+}
+#csspanel.open { display: flex; }
+#csspanel header { flex: none; padding: 7px 10px; font-size: 11px; color: #7b8294; border-bottom: 1px solid #232733; }
+#csspanel textarea {
+  flex: 1;
+  padding: 10px;
+  background: #0e0f13;
+  color: #cfd3dc;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: auto;
+  white-space: pre;
+  tab-size: 2;
+  font: 11px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+}
+body.css-open #wrap { margin-right: var(--panelw); }
+
+/* stylesheet-only notes: give a track's ::before/::after content + grid-area
+   and the player hears it. Dashed border marks them as stylesheet creatures. */
+.trk::before, .trk::after {
+  border-radius: 3px;
+  border: 1px dashed hsl(var(--hue) 75% 75% / 0.95);
+  background: hsl(var(--hue) 65% 56% / 0.5);
+}
+
+#ph {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 6px #fff8;
+  z-index: 4;
+  pointer-events: none;
+  display: none;
+}
+</style>
+<style id="songcss">
+/* ========== PIXEL BLOOM — arrangement (song data, edit live via { } css) == */
+
+/* phones get the chiptune slightly unplugged */
+@media (max-width: 700px) {
+  html { --bpm: 156 !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { --bpm: 140 !important; }
+  .trk[data-name="Drums"] { --vol: 0.15 !important; }
+}
+
+body:has(#mute-lead:checked)  .trk[data-name="Lead"]    { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
+body:has(#mute-harm:checked)  .trk[data-name="Harmony"] { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
+body:has(#mute-arp:checked)   .trk[data-name="Arp"]     { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
+body:has(#mute-bass:checked)  .trk[data-name="Bass"]    { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
+body:has(#mute-drums:checked) .trk[data-name="Drums"]   { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
+
+/* night mode is the parallel minor: D major's scale degrees 3, 6, 7
+   (F#, B, C#) drop one semitone. Notes are selected BY PITCH via attribute
+   substring match on their grid row — pitch-class selectors. Drums excluded
+   (their rows are percussion, not harmony). */
+@media (prefers-color-scheme: dark) {
+  .trk:not([data-name="Drums"]) b[style*="grid-area:1/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:13/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:25/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:37/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:6/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:18/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:30/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:42/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:11/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:23/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:35/"],
+  .trk:not([data-name="Drums"]) b[style*="grid-area:47/"] {
+    transform: translateY(var(--rh)) !important;
+  }
+}
+
+/* arrangement states in the URL: pixel-bloom.html#finale is shareable and
+   togglable with plain <a> links — :target as a remix selector */
+html:has(#finale:target) { --bpm: 196 !important; }
+body:has(#finale:target) .trk[data-name="Lead"] { transform: translateY(calc(var(--rh) * -12)); }
+
+/* hyper: final-lap mode */
+html:has(#hyper:checked) { --bpm: 192 !important; }
+
+/* daydream: the same song, asleep — pulses soften to triangles */
+html:has(#dream:checked) { --bpm: 126 !important; }
+body:has(#dream:checked) .trk[data-name="Lead"],
+body:has(#dream:checked) .trk[data-name="Harmony"] { --wave: triangle !important; }
+body:has(#dream:checked) .trk[data-name="Drums"] { --vol: 0.12 !important; }
+body:has(#dream:checked) .trk[data-name="Arp"] { --vol: 0.04 !important; }
+
+/* the arp blooms and recedes across the loop */
+html.playing .trk[data-name="Arp"] {
+  animation: bloom calc(var(--steps) * 15s / var(--bpm)) ease-in-out infinite;
+}
+@keyframes bloom { 0%, 100% { --vol: 0.045; } 50% { --vol: 0.1; } }
+
+.trk { transition: --vol 1.2s ease; }
+
+/* standing motion: filter plucks, ±4-cent breath, lead filter wander */
+.trk { --fenv: 0.6; }
+html.playing .trk { animation: microtape 23s ease-in-out infinite; }
+@keyframes microtape {
+  0%, 100% { translate: 0 0; }
+  33% { translate: 0 calc(var(--rh) * -0.045); }
+  66% { translate: 0 calc(var(--rh) * 0.035); }
+}
+html.playing .trk[data-name="Lead"] { animation: cutdrift 9.3s ease-in-out infinite, microtape 23s ease-in-out infinite; }
+@keyframes cutdrift { 0%, 100% { --cutoff: 2400; } 50% { --cutoff: 4400; } }
+html { --duck: 0.2; }
+</style>
+</head>
+<body>
+<nav id="mixer">
+<span>css-only:</span>
+<label><input type="checkbox" id="mute-lead"> mute lead</label>
+<label><input type="checkbox" id="mute-harm"> mute harmony</label>
+<label><input type="checkbox" id="mute-arp"> mute arp</label>
+<label><input type="checkbox" id="mute-bass"> mute bass</label>
+<label><input type="checkbox" id="mute-drums"> mute drums</label>
+<label><input type="checkbox" id="hyper"> hyper</label>
+<label><input type="checkbox" id="dream"> daydream</label>
+<a href="#finale">#finale</a>
+<a href="#">#reset</a>
+<i id="finale" hidden></i>
+</nav>
+<div id="wrap">
+<main id="roll" style="--steps:256">
+<section class="trk" data-name="Lead" style="--wave:pulse25;--vol:0.2;--hue:200;--cutoff:3200;--spread:5;--verb:0.2;--echo:0.28">
+  <b style="grid-area:6/1/7/3"></b>
+  <b style="grid-area:5/3/6/5"></b>
+  <b style="grid-area:3/5/4/9"></b>
+  <b style="grid-area:6/9/7/11"></b>
+  <b style="grid-area:10/11/11/13"></b>
+  <b style="grid-area:8/13/9/17"></b>
+  <b style="grid-area:11/17/12/19"></b>
+  <b style="grid-area:8/19/9/21"></b>
+  <b style="grid-area:3/21/4/25"></b>
+  <b style="grid-area:5/25/6/27"></b>
+  <b style="grid-area:6/27/7/29"></b>
+  <b style="grid-area:8/29/9/33"></b>
+  <b style="grid-area:6/33/7/35"></b>
+  <b style="grid-area:5/35/6/37"></b>
+  <b style="grid-area:3/37/4/39"></b>
+  <b style="grid-area:1/39/2/43"></b>
+  <b style="grid-area:3/43/4/45"></b>
+  <b style="grid-area:6/45/7/49"></b>
+  <b style="grid-area:5/49/6/53"></b>
+  <b style="grid-area:6/53/7/55"></b>
+  <b style="grid-area:8/55/9/57"></b>
+  <b style="grid-area:10/57/11/61"></b>
+  <b style="grid-area:8/61/9/63"></b>
+  <b style="grid-area:6/63/7/65"></b>
+  <b style="grid-area:6/65/7/67"></b>
+  <b style="grid-area:5/67/6/69"></b>
+  <b style="grid-area:3/69/4/73"></b>
+  <b style="grid-area:6/73/7/75"></b>
+  <b style="grid-area:10/75/11/77"></b>
+  <b style="grid-area:8/77/9/81"></b>
+  <b style="grid-area:11/81/12/83"></b>
+  <b style="grid-area:8/83/9/85"></b>
+  <b style="grid-area:3/85/4/89"></b>
+  <b style="grid-area:1/89/2/91"></b>
+  <b style="grid-area:3/91/4/93"></b>
+  <b style="grid-area:5/93/6/97"></b>
+  <b style="grid-area:5/97/6/99"></b>
+  <b style="grid-area:3/99/4/101"></b>
+  <b style="grid-area:1/101/2/105"></b>
+  <b style="grid-area:3/105/4/107"></b>
+  <b style="grid-area:5/107/6/109"></b>
+  <b style="grid-area:6/109/7/113"></b>
+  <b style="grid-area:8/113/9/119"></b>
+  <b style="grid-area:10/119/11/121"></b>
+  <b style="grid-area:11/121/12/125"></b>
+  <b style="grid-area:10/129/11/133"></b>
+  <b style="grid-area:8/133/9/135"></b>
+  <b style="grid-area:6/135/7/137"></b>
+  <b style="grid-area:5/137/6/145"></b>
+  <b style="grid-area:3/145/4/151"></b>
+  <b style="grid-area:5/151/6/153"></b>
+  <b style="grid-area:6/153/7/157"></b>
+  <b style="grid-area:8/157/9/161"></b>
+  <b style="grid-area:6/161/7/165"></b>
+  <b style="grid-area:5/165/6/169"></b>
+  <b style="grid-area:3/169/4/177"></b>
+  <b style="grid-area:1/177/2/181"></b>
+  <b style="grid-area:3/181/4/185"></b>
+  <b style="grid-area:5/185/6/187"></b>
+  <b style="grid-area:6/187/7/189"></b>
+  <b style="grid-area:8/189/9/193"></b>
+  <b style="grid-area:5/193/6/197"></b>
+  <b style="grid-area:3/197/4/201"></b>
+  <b style="grid-area:1/201/2/209"></b>
+  <b style="grid-area:3/209/4/213"></b>
+  <b style="grid-area:1/213/2/215"></b>
+  <b style="grid-area:3/215/4/217"></b>
+  <b style="grid-area:5/217/6/221"></b>
+  <b style="grid-area:6/221/7/223"></b>
+  <b style="grid-area:8/223/9/225"></b>
+  <b style="grid-area:6/225/7/233"></b>
+  <b style="grid-area:5/233/6/235"></b>
+  <b style="grid-area:3/235/4/237"></b>
+  <b style="grid-area:1/237/2/241"></b>
+  <b style="grid-area:3/241/4/247"></b>
+  <b style="grid-area:5/247/6/249"></b>
+  <b style="grid-area:8/249/9/253"></b>
+</section>
+<section class="trk" data-name="Harmony" style="--wave:pulse125;--vol:0.11;--hue:320;--cutoff:2600;--spread:5;--verb:0.3;--pan:-0.2">
+  <b style="grid-area:6/5/7/9"></b>
+  <b style="grid-area:11/13/12/17"></b>
+  <b style="grid-area:6/21/7/25"></b>
+  <b style="grid-area:11/29/12/33"></b>
+  <b style="grid-area:5/39/6/43"></b>
+  <b style="grid-area:10/45/11/49"></b>
+  <b style="grid-area:8/49/9/53"></b>
+  <b style="grid-area:13/57/14/61"></b>
+  <b style="grid-area:6/69/7/73"></b>
+  <b style="grid-area:11/77/12/81"></b>
+  <b style="grid-area:6/85/7/89"></b>
+  <b style="grid-area:8/93/9/97"></b>
+  <b style="grid-area:5/101/6/105"></b>
+  <b style="grid-area:10/109/11/113"></b>
+  <b style="grid-area:11/113/12/119"></b>
+  <b style="grid-area:15/121/16/125"></b>
+  <b style="grid-area:13/129/14/133"></b>
+  <b style="grid-area:8/137/9/145"></b>
+  <b style="grid-area:6/145/7/151"></b>
+  <b style="grid-area:10/153/11/157"></b>
+  <b style="grid-area:11/157/12/161"></b>
+  <b style="grid-area:10/161/11/165"></b>
+  <b style="grid-area:8/165/9/169"></b>
+  <b style="grid-area:6/169/7/177"></b>
+  <b style="grid-area:5/177/6/181"></b>
+  <b style="grid-area:6/181/7/185"></b>
+  <b style="grid-area:11/189/12/193"></b>
+  <b style="grid-area:8/193/9/197"></b>
+  <b style="grid-area:6/197/7/201"></b>
+  <b style="grid-area:5/201/6/209"></b>
+  <b style="grid-area:6/209/7/213"></b>
+  <b style="grid-area:8/217/9/221"></b>
+  <b style="grid-area:10/225/11/233"></b>
+  <b style="grid-area:5/237/6/241"></b>
+  <b style="grid-area:6/241/7/247"></b>
+  <b style="grid-area:11/249/12/253"></b>
+</section>
+<section class="trk" data-name="Arp" style="--wave:square;--vol:0.07;--hue:265;--cutoff:2200;--echo:0.22;--pan:0.15;--width:0.5">
+  <b style="grid-area:22/1/23/3"></b>
+  <b style="grid-area:18/3/19/5"></b>
+  <b style="grid-area:15/5/16/7"></b>
+  <b style="grid-area:10/7/11/9"></b>
+  <b style="grid-area:22/9/23/11"></b>
+  <b style="grid-area:18/11/19/13"></b>
+  <b style="grid-area:15/13/16/15"></b>
+  <b style="grid-area:10/15/11/17"></b>
+  <b style="grid-area:27/17/28/19"></b>
+  <b style="grid-area:23/19/24/21"></b>
+  <b style="grid-area:20/21/21/23"></b>
+  <b style="grid-area:15/23/16/25"></b>
+  <b style="grid-area:27/25/28/27"></b>
+  <b style="grid-area:23/27/24/29"></b>
+  <b style="grid-area:20/29/21/31"></b>
+  <b style="grid-area:15/31/16/33"></b>
+  <b style="grid-area:25/33/26/35"></b>
+  <b style="grid-area:22/35/23/37"></b>
+  <b style="grid-area:18/37/19/39"></b>
+  <b style="grid-area:13/39/14/41"></b>
+  <b style="grid-area:25/41/26/43"></b>
+  <b style="grid-area:22/43/23/45"></b>
+  <b style="grid-area:18/45/19/47"></b>
+  <b style="grid-area:13/47/14/49"></b>
+  <b style="grid-area:29/49/30/51"></b>
+  <b style="grid-area:25/51/26/53"></b>
+  <b style="grid-area:22/53/23/55"></b>
+  <b style="grid-area:17/55/18/57"></b>
+  <b style="grid-area:29/57/30/59"></b>
+  <b style="grid-area:25/59/26/61"></b>
+  <b style="grid-area:22/61/23/63"></b>
+  <b style="grid-area:17/63/18/65"></b>
+  <b style="grid-area:22/65/23/67"></b>
+  <b style="grid-area:18/67/19/69"></b>
+  <b style="grid-area:15/69/16/71"></b>
+  <b style="grid-area:10/71/11/73"></b>
+  <b style="grid-area:22/73/23/75"></b>
+  <b style="grid-area:18/75/19/77"></b>
+  <b style="grid-area:15/77/16/79"></b>
+  <b style="grid-area:10/79/11/81"></b>
+  <b style="grid-area:27/81/28/83"></b>
+  <b style="grid-area:23/83/24/85"></b>
+  <b style="grid-area:20/85/21/87"></b>
+  <b style="grid-area:15/87/16/89"></b>
+  <b style="grid-area:27/89/28/91"></b>
+  <b style="grid-area:23/91/24/93"></b>
+  <b style="grid-area:20/93/21/95"></b>
+  <b style="grid-area:15/95/16/97"></b>
+  <b style="grid-area:29/97/30/99"></b>
+  <b style="grid-area:25/99/26/101"></b>
+  <b style="grid-area:22/101/23/103"></b>
+  <b style="grid-area:17/103/18/105"></b>
+  <b style="grid-area:29/105/30/107"></b>
+  <b style="grid-area:25/107/26/109"></b>
+  <b style="grid-area:22/109/23/111"></b>
+  <b style="grid-area:17/111/18/113"></b>
+  <b style="grid-area:27/113/28/115"></b>
+  <b style="grid-area:23/115/24/117"></b>
+  <b style="grid-area:20/117/21/119"></b>
+  <b style="grid-area:15/119/16/121"></b>
+  <b style="grid-area:27/121/28/123"></b>
+  <b style="grid-area:23/123/24/125"></b>
+  <b style="grid-area:20/125/21/127"></b>
+  <b style="grid-area:15/127/16/129"></b>
+  <b style="grid-area:29/129/30/130"></b>
+  <b style="grid-area:25/130/26/131"></b>
+  <b style="grid-area:22/131/23/132"></b>
+  <b style="grid-area:17/132/18/133"></b>
+  <b style="grid-area:29/133/30/134"></b>
+  <b style="grid-area:25/134/26/135"></b>
+  <b style="grid-area:22/135/23/136"></b>
+  <b style="grid-area:17/136/18/137"></b>
+  <b style="grid-area:29/137/30/138"></b>
+  <b style="grid-area:25/138/26/139"></b>
+  <b style="grid-area:22/139/23/140"></b>
+  <b style="grid-area:17/140/18/141"></b>
+  <b style="grid-area:29/141/30/142"></b>
+  <b style="grid-area:25/142/26/143"></b>
+  <b style="grid-area:22/143/23/144"></b>
+  <b style="grid-area:17/144/18/145"></b>
+  <b style="grid-area:27/145/28/146"></b>
+  <b style="grid-area:23/146/24/147"></b>
+  <b style="grid-area:20/147/21/148"></b>
+  <b style="grid-area:15/148/16/149"></b>
+  <b style="grid-area:27/149/28/150"></b>
+  <b style="grid-area:23/150/24/151"></b>
+  <b style="grid-area:20/151/21/152"></b>
+  <b style="grid-area:15/152/16/153"></b>
+  <b style="grid-area:27/153/28/154"></b>
+  <b style="grid-area:23/154/24/155"></b>
+  <b style="grid-area:20/155/21/156"></b>
+  <b style="grid-area:15/156/16/157"></b>
+  <b style="grid-area:27/157/28/158"></b>
+  <b style="grid-area:23/158/24/159"></b>
+  <b style="grid-area:20/159/21/160"></b>
+  <b style="grid-area:15/160/16/161"></b>
+  <b style="grid-area:25/161/26/162"></b>
+  <b style="grid-area:22/162/23/163"></b>
+  <b style="grid-area:18/163/19/164"></b>
+  <b style="grid-area:13/164/14/165"></b>
+  <b style="grid-area:25/165/26/166"></b>
+  <b style="grid-area:22/166/23/167"></b>
+  <b style="grid-area:18/167/19/168"></b>
+  <b style="grid-area:13/168/14/169"></b>
+  <b style="grid-area:25/169/26/170"></b>
+  <b style="grid-area:22/170/23/171"></b>
+  <b style="grid-area:18/171/19/172"></b>
+  <b style="grid-area:13/172/14/173"></b>
+  <b style="grid-area:25/173/26/174"></b>
+  <b style="grid-area:22/174/23/175"></b>
+  <b style="grid-area:18/175/19/176"></b>
+  <b style="grid-area:13/176/14/177"></b>
+  <b style="grid-area:27/177/28/178"></b>
+  <b style="grid-area:23/178/24/179"></b>
+  <b style="grid-area:20/179/21/180"></b>
+  <b style="grid-area:15/180/16/181"></b>
+  <b style="grid-area:27/181/28/182"></b>
+  <b style="grid-area:23/182/24/183"></b>
+  <b style="grid-area:20/183/21/184"></b>
+  <b style="grid-area:15/184/16/185"></b>
+  <b style="grid-area:27/185/28/186"></b>
+  <b style="grid-area:23/186/24/187"></b>
+  <b style="grid-area:20/187/21/188"></b>
+  <b style="grid-area:15/188/16/189"></b>
+  <b style="grid-area:27/189/28/190"></b>
+  <b style="grid-area:23/190/24/191"></b>
+  <b style="grid-area:20/191/21/192"></b>
+  <b style="grid-area:15/192/16/193"></b>
+  <b style="grid-area:17/193/18/194"></b>
+  <b style="grid-area:13/194/14/195"></b>
+  <b style="grid-area:10/195/11/196"></b>
+  <b style="grid-area:5/196/6/197"></b>
+  <b style="grid-area:17/197/18/198"></b>
+  <b style="grid-area:13/198/14/199"></b>
+  <b style="grid-area:10/199/11/200"></b>
+  <b style="grid-area:5/200/6/201"></b>
+  <b style="grid-area:17/201/18/202"></b>
+  <b style="grid-area:13/202/14/203"></b>
+  <b style="grid-area:10/203/11/204"></b>
+  <b style="grid-area:5/204/6/205"></b>
+  <b style="grid-area:17/205/18/206"></b>
+  <b style="grid-area:13/206/14/207"></b>
+  <b style="grid-area:10/207/11/208"></b>
+  <b style="grid-area:5/208/6/209"></b>
+  <b style="grid-area:15/209/16/210"></b>
+  <b style="grid-area:11/210/12/211"></b>
+  <b style="grid-area:8/211/9/212"></b>
+  <b style="grid-area:3/212/4/213"></b>
+  <b style="grid-area:15/213/16/214"></b>
+  <b style="grid-area:11/214/12/215"></b>
+  <b style="grid-area:8/215/9/216"></b>
+  <b style="grid-area:3/216/4/217"></b>
+  <b style="grid-area:15/217/16/218"></b>
+  <b style="grid-area:11/218/12/219"></b>
+  <b style="grid-area:8/219/9/220"></b>
+  <b style="grid-area:3/220/4/221"></b>
+  <b style="grid-area:15/221/16/222"></b>
+  <b style="grid-area:11/222/12/223"></b>
+  <b style="grid-area:8/223/9/224"></b>
+  <b style="grid-area:3/224/4/225"></b>
+  <b style="grid-area:22/225/23/226"></b>
+  <b style="grid-area:18/226/19/227"></b>
+  <b style="grid-area:15/227/16/228"></b>
+  <b style="grid-area:10/228/11/229"></b>
+  <b style="grid-area:22/229/23/230"></b>
+  <b style="grid-area:18/230/19/231"></b>
+  <b style="grid-area:15/231/16/232"></b>
+  <b style="grid-area:10/232/11/233"></b>
+  <b style="grid-area:22/233/23/234"></b>
+  <b style="grid-area:18/234/19/235"></b>
+  <b style="grid-area:15/235/16/236"></b>
+  <b style="grid-area:10/236/11/237"></b>
+  <b style="grid-area:22/237/23/238"></b>
+  <b style="grid-area:18/238/19/239"></b>
+  <b style="grid-area:15/239/16/240"></b>
+  <b style="grid-area:10/240/11/241"></b>
+  <b style="grid-area:15/241/16/242"></b>
+  <b style="grid-area:11/242/12/243"></b>
+  <b style="grid-area:8/243/9/244"></b>
+  <b style="grid-area:3/244/4/245"></b>
+  <b style="grid-area:15/245/16/246"></b>
+  <b style="grid-area:11/246/12/247"></b>
+  <b style="grid-area:8/247/9/248"></b>
+  <b style="grid-area:3/248/4/249"></b>
+  <b style="grid-area:15/249/16/250"></b>
+  <b style="grid-area:11/250/12/251"></b>
+  <b style="grid-area:8/251/9/252"></b>
+  <b style="grid-area:3/252/4/253"></b>
+  <b style="grid-area:15/253/16/254"></b>
+  <b style="grid-area:11/254/12/255"></b>
+  <b style="grid-area:8/255/9/256"></b>
+  <b style="grid-area:3/256/4/257"></b>
+</section>
+<section class="trk" data-name="Bass" style="--wave:triangle;--vol:0.4;--hue:145;--cutoff:900;--verb:0.05;--width:0.1">
+  <b style="grid-area:46/1/47/3"></b>
+  <b style="grid-area:34/3/35/5"></b>
+  <b style="grid-area:46/5/47/7"></b>
+  <b style="grid-area:34/7/35/9"></b>
+  <b style="grid-area:46/9/47/11"></b>
+  <b style="grid-area:34/11/35/13"></b>
+  <b style="grid-area:46/13/47/15"></b>
+  <b style="grid-area:34/15/35/17"></b>
+  <b style="grid-area:39/17/40/19"></b>
+  <b style="grid-area:27/19/28/21"></b>
+  <b style="grid-area:39/21/40/23"></b>
+  <b style="grid-area:27/23/28/25"></b>
+  <b style="grid-area:39/25/40/27"></b>
+  <b style="grid-area:27/27/28/29"></b>
+  <b style="grid-area:39/29/40/31"></b>
+  <b style="grid-area:27/31/28/33"></b>
+  <b style="grid-area:37/33/38/35"></b>
+  <b style="grid-area:25/35/26/37"></b>
+  <b style="grid-area:37/37/38/39"></b>
+  <b style="grid-area:25/39/26/41"></b>
+  <b style="grid-area:37/41/38/43"></b>
+  <b style="grid-area:25/43/26/45"></b>
+  <b style="grid-area:37/45/38/47"></b>
+  <b style="grid-area:25/47/26/49"></b>
+  <b style="grid-area:41/49/42/51"></b>
+  <b style="grid-area:29/51/30/53"></b>
+  <b style="grid-area:41/53/42/55"></b>
+  <b style="grid-area:29/55/30/57"></b>
+  <b style="grid-area:41/57/42/59"></b>
+  <b style="grid-area:29/59/30/61"></b>
+  <b style="grid-area:41/61/42/63"></b>
+  <b style="grid-area:29/63/30/65"></b>
+  <b style="grid-area:46/65/47/67"></b>
+  <b style="grid-area:34/67/35/69"></b>
+  <b style="grid-area:46/69/47/71"></b>
+  <b style="grid-area:34/71/35/73"></b>
+  <b style="grid-area:46/73/47/75"></b>
+  <b style="grid-area:34/75/35/77"></b>
+  <b style="grid-area:46/77/47/79"></b>
+  <b style="grid-area:34/79/35/81"></b>
+  <b style="grid-area:39/81/40/83"></b>
+  <b style="grid-area:27/83/28/85"></b>
+  <b style="grid-area:39/85/40/87"></b>
+  <b style="grid-area:27/87/28/89"></b>
+  <b style="grid-area:39/89/40/91"></b>
+  <b style="grid-area:27/91/28/93"></b>
+  <b style="grid-area:39/93/40/95"></b>
+  <b style="grid-area:27/95/28/97"></b>
+  <b style="grid-area:41/97/42/99"></b>
+  <b style="grid-area:29/99/30/101"></b>
+  <b style="grid-area:41/101/42/103"></b>
+  <b style="grid-area:29/103/30/105"></b>
+  <b style="grid-area:41/105/42/107"></b>
+  <b style="grid-area:29/107/30/109"></b>
+  <b style="grid-area:41/109/42/111"></b>
+  <b style="grid-area:29/111/30/113"></b>
+  <b style="grid-area:41/129/42/131"></b>
+  <b style="grid-area:29/131/30/133"></b>
+  <b style="grid-area:41/133/42/135"></b>
+  <b style="grid-area:29/135/30/137"></b>
+  <b style="grid-area:41/137/42/139"></b>
+  <b style="grid-area:29/139/30/141"></b>
+  <b style="grid-area:41/141/42/143"></b>
+  <b style="grid-area:29/143/30/145"></b>
+  <b style="grid-area:39/145/40/147"></b>
+  <b style="grid-area:27/147/28/149"></b>
+  <b style="grid-area:39/149/40/151"></b>
+  <b style="grid-area:27/151/28/153"></b>
+  <b style="grid-area:39/153/40/155"></b>
+  <b style="grid-area:27/155/28/157"></b>
+  <b style="grid-area:39/157/40/159"></b>
+  <b style="grid-area:27/159/28/161"></b>
+  <b style="grid-area:37/161/38/163"></b>
+  <b style="grid-area:25/163/26/165"></b>
+  <b style="grid-area:37/165/38/167"></b>
+  <b style="grid-area:25/167/26/169"></b>
+  <b style="grid-area:37/169/38/171"></b>
+  <b style="grid-area:25/171/26/173"></b>
+  <b style="grid-area:37/173/38/175"></b>
+  <b style="grid-area:25/175/26/177"></b>
+  <b style="grid-area:39/177/40/179"></b>
+  <b style="grid-area:27/179/28/181"></b>
+  <b style="grid-area:39/181/40/183"></b>
+  <b style="grid-area:27/183/28/185"></b>
+  <b style="grid-area:39/185/40/187"></b>
+  <b style="grid-area:27/187/28/189"></b>
+  <b style="grid-area:39/189/40/191"></b>
+  <b style="grid-area:27/191/28/193"></b>
+  <b style="grid-area:41/193/42/195"></b>
+  <b style="grid-area:29/195/30/197"></b>
+  <b style="grid-area:41/197/42/199"></b>
+  <b style="grid-area:29/199/30/201"></b>
+  <b style="grid-area:41/201/42/203"></b>
+  <b style="grid-area:29/203/30/205"></b>
+  <b style="grid-area:41/205/42/207"></b>
+  <b style="grid-area:29/207/30/209"></b>
+  <b style="grid-area:39/209/40/211"></b>
+  <b style="grid-area:27/211/28/213"></b>
+  <b style="grid-area:39/213/40/215"></b>
+  <b style="grid-area:27/215/28/217"></b>
+  <b style="grid-area:39/217/40/219"></b>
+  <b style="grid-area:27/219/28/221"></b>
+  <b style="grid-area:39/221/40/223"></b>
+  <b style="grid-area:27/223/28/225"></b>
+  <b style="grid-area:46/225/47/227"></b>
+  <b style="grid-area:34/227/35/229"></b>
+  <b style="grid-area:46/229/47/231"></b>
+  <b style="grid-area:34/231/35/233"></b>
+  <b style="grid-area:46/233/47/235"></b>
+  <b style="grid-area:34/235/35/237"></b>
+  <b style="grid-area:46/237/47/239"></b>
+  <b style="grid-area:34/239/35/241"></b>
+  <b style="grid-area:39/113/40/115"></b>
+  <b style="grid-area:27/115/28/117"></b>
+  <b style="grid-area:39/117/40/119"></b>
+  <b style="grid-area:27/119/28/121"></b>
+  <b style="grid-area:39/121/40/123"></b>
+  <b style="grid-area:27/123/28/125"></b>
+  <b style="grid-area:42/125/43/127"></b>
+  <b style="grid-area:42/127/43/129"></b>
+  <b style="grid-area:39/241/40/243"></b>
+  <b style="grid-area:27/243/28/245"></b>
+  <b style="grid-area:39/245/40/247"></b>
+  <b style="grid-area:27/247/28/249"></b>
+  <b style="grid-area:39/249/40/251"></b>
+  <b style="grid-area:37/251/38/253"></b>
+  <b style="grid-area:35/253/36/257"></b>
+</section>
+<section class="trk" data-name="Drums" style="--wave:noise;--vol:0.5;--hue:35;--verb:0.12">
+  <b style="grid-area:1/1/2/2;--vel:0.45"></b>
+  <b style="grid-area:1/3/2/4;--vel:0.25"></b>
+  <b style="grid-area:1/5/2/6;--vel:0.45"></b>
+  <b style="grid-area:1/7/2/8;--vel:0.25"></b>
+  <b style="grid-area:1/9/2/10;--vel:0.45"></b>
+  <b style="grid-area:1/11/2/12;--vel:0.25"></b>
+  <b style="grid-area:1/13/2/14;--vel:0.45"></b>
+  <b style="grid-area:1/15/2/16;--vel:0.25"></b>
+  <b style="grid-area:43/1/44/2;--vel:1"></b>
+  <b style="grid-area:43/5/44/6;--vel:1"></b>
+  <b style="grid-area:43/9/44/10;--vel:1"></b>
+  <b style="grid-area:43/13/44/14;--vel:1"></b>
+  <b style="grid-area:17/5/18/6;--vel:0.9"></b>
+  <b style="grid-area:17/13/18/14;--vel:0.9"></b>
+  <b style="grid-area:1/17/2/18;--vel:0.45"></b>
+  <b style="grid-area:1/19/2/20;--vel:0.25"></b>
+  <b style="grid-area:1/21/2/22;--vel:0.45"></b>
+  <b style="grid-area:1/23/2/24;--vel:0.25"></b>
+  <b style="grid-area:1/25/2/26;--vel:0.45"></b>
+  <b style="grid-area:1/27/2/28;--vel:0.25"></b>
+  <b style="grid-area:1/29/2/30;--vel:0.45"></b>
+  <b style="grid-area:1/31/2/32;--vel:0.25"></b>
+  <b style="grid-area:43/17/44/18;--vel:1"></b>
+  <b style="grid-area:43/21/44/22;--vel:1"></b>
+  <b style="grid-area:43/25/44/26;--vel:1"></b>
+  <b style="grid-area:43/29/44/30;--vel:1"></b>
+  <b style="grid-area:17/21/18/22;--vel:0.9"></b>
+  <b style="grid-area:17/29/18/30;--vel:0.9"></b>
+  <b style="grid-area:1/33/2/34;--vel:0.45"></b>
+  <b style="grid-area:1/35/2/36;--vel:0.25"></b>
+  <b style="grid-area:1/37/2/38;--vel:0.45"></b>
+  <b style="grid-area:1/39/2/40;--vel:0.25"></b>
+  <b style="grid-area:1/41/2/42;--vel:0.45"></b>
+  <b style="grid-area:1/43/2/44;--vel:0.25"></b>
+  <b style="grid-area:1/45/2/46;--vel:0.45"></b>
+  <b style="grid-area:1/47/2/48;--vel:0.25"></b>
+  <b style="grid-area:43/33/44/34;--vel:1"></b>
+  <b style="grid-area:43/37/44/38;--vel:1"></b>
+  <b style="grid-area:43/41/44/42;--vel:1"></b>
+  <b style="grid-area:43/45/44/46;--vel:1"></b>
+  <b style="grid-area:17/37/18/38;--vel:0.9"></b>
+  <b style="grid-area:17/45/18/46;--vel:0.9"></b>
+  <b style="grid-area:1/49/2/50;--vel:0.45"></b>
+  <b style="grid-area:1/51/2/52;--vel:0.25"></b>
+  <b style="grid-area:1/53/2/54;--vel:0.45"></b>
+  <b style="grid-area:1/55/2/56;--vel:0.25"></b>
+  <b style="grid-area:1/57/2/58;--vel:0.45"></b>
+  <b style="grid-area:1/59/2/60;--vel:0.25"></b>
+  <b style="grid-area:1/61/2/62;--vel:0.45"></b>
+  <b style="grid-area:1/63/2/64;--vel:0.25"></b>
+  <b style="grid-area:43/49/44/50;--vel:1"></b>
+  <b style="grid-area:43/53/44/54;--vel:1"></b>
+  <b style="grid-area:43/57/44/58;--vel:1"></b>
+  <b style="grid-area:43/61/44/62;--vel:1"></b>
+  <b style="grid-area:17/53/18/54;--vel:0.9"></b>
+  <b style="grid-area:17/61/18/62;--vel:0.9"></b>
+  <b style="grid-area:1/65/2/66;--vel:0.45"></b>
+  <b style="grid-area:1/67/2/68;--vel:0.25"></b>
+  <b style="grid-area:1/69/2/70;--vel:0.45"></b>
+  <b style="grid-area:1/71/2/72;--vel:0.25"></b>
+  <b style="grid-area:1/73/2/74;--vel:0.45"></b>
+  <b style="grid-area:1/75/2/76;--vel:0.25"></b>
+  <b style="grid-area:1/77/2/78;--vel:0.45"></b>
+  <b style="grid-area:1/79/2/80;--vel:0.25"></b>
+  <b style="grid-area:43/65/44/66;--vel:1"></b>
+  <b style="grid-area:43/69/44/70;--vel:1"></b>
+  <b style="grid-area:43/73/44/74;--vel:1"></b>
+  <b style="grid-area:43/77/44/78;--vel:1"></b>
+  <b style="grid-area:17/69/18/70;--vel:0.9"></b>
+  <b style="grid-area:17/77/18/78;--vel:0.9"></b>
+  <b style="grid-area:1/81/2/82;--vel:0.45"></b>
+  <b style="grid-area:1/83/2/84;--vel:0.25"></b>
+  <b style="grid-area:1/85/2/86;--vel:0.45"></b>
+  <b style="grid-area:1/87/2/88;--vel:0.25"></b>
+  <b style="grid-area:1/89/2/90;--vel:0.45"></b>
+  <b style="grid-area:1/91/2/92;--vel:0.25"></b>
+  <b style="grid-area:1/93/2/94;--vel:0.45"></b>
+  <b style="grid-area:1/95/2/96;--vel:0.25"></b>
+  <b style="grid-area:43/81/44/82;--vel:1"></b>
+  <b style="grid-area:43/85/44/86;--vel:1"></b>
+  <b style="grid-area:43/89/44/90;--vel:1"></b>
+  <b style="grid-area:43/93/44/94;--vel:1"></b>
+  <b style="grid-area:17/85/18/86;--vel:0.9"></b>
+  <b style="grid-area:17/93/18/94;--vel:0.9"></b>
+  <b style="grid-area:1/97/2/98;--vel:0.45"></b>
+  <b style="grid-area:1/99/2/100;--vel:0.25"></b>
+  <b style="grid-area:1/101/2/102;--vel:0.45"></b>
+  <b style="grid-area:1/103/2/104;--vel:0.25"></b>
+  <b style="grid-area:1/105/2/106;--vel:0.45"></b>
+  <b style="grid-area:1/107/2/108;--vel:0.25"></b>
+  <b style="grid-area:1/109/2/110;--vel:0.45"></b>
+  <b style="grid-area:1/111/2/112;--vel:0.25"></b>
+  <b style="grid-area:43/97/44/98;--vel:1"></b>
+  <b style="grid-area:43/101/44/102;--vel:1"></b>
+  <b style="grid-area:43/105/44/106;--vel:1"></b>
+  <b style="grid-area:43/109/44/110;--vel:1"></b>
+  <b style="grid-area:17/101/18/102;--vel:0.9"></b>
+  <b style="grid-area:17/109/18/110;--vel:0.9"></b>
+  <b style="grid-area:1/113/2/114;--vel:0.45"></b>
+  <b style="grid-area:1/115/2/116;--vel:0.25"></b>
+  <b style="grid-area:1/117/2/118;--vel:0.45"></b>
+  <b style="grid-area:1/119/2/120;--vel:0.25"></b>
+  <b style="grid-area:1/121/2/122;--vel:0.45"></b>
+  <b style="grid-area:1/123/2/124;--vel:0.25"></b>
+  <b style="grid-area:1/125/2/126;--vel:0.45"></b>
+  <b style="grid-area:1/127/2/128;--vel:0.25"></b>
+  <b style="grid-area:43/113/44/114;--vel:1"></b>
+  <b style="grid-area:43/117/44/118;--vel:1"></b>
+  <b style="grid-area:43/121/44/122;--vel:1"></b>
+  <b style="grid-area:17/117/18/118;--vel:0.9"></b>
+  <b style="grid-area:1/129/2/130;--vel:0.45"></b>
+  <b style="grid-area:1/131/2/132;--vel:0.25"></b>
+  <b style="grid-area:1/133/2/134;--vel:0.45"></b>
+  <b style="grid-area:1/135/2/136;--vel:0.25"></b>
+  <b style="grid-area:1/137/2/138;--vel:0.45"></b>
+  <b style="grid-area:1/139/2/140;--vel:0.25"></b>
+  <b style="grid-area:1/141/2/142;--vel:0.45"></b>
+  <b style="grid-area:1/143/2/144;--vel:0.25"></b>
+  <b style="grid-area:43/129/44/130;--vel:1"></b>
+  <b style="grid-area:43/133/44/134;--vel:1"></b>
+  <b style="grid-area:43/137/44/138;--vel:1"></b>
+  <b style="grid-area:43/141/44/142;--vel:1"></b>
+  <b style="grid-area:17/133/18/134;--vel:0.9"></b>
+  <b style="grid-area:17/141/18/142;--vel:0.9"></b>
+  <b style="grid-area:1/145/2/146;--vel:0.45"></b>
+  <b style="grid-area:1/147/2/148;--vel:0.25"></b>
+  <b style="grid-area:1/149/2/150;--vel:0.45"></b>
+  <b style="grid-area:1/151/2/152;--vel:0.25"></b>
+  <b style="grid-area:1/153/2/154;--vel:0.45"></b>
+  <b style="grid-area:1/155/2/156;--vel:0.25"></b>
+  <b style="grid-area:1/157/2/158;--vel:0.45"></b>
+  <b style="grid-area:1/159/2/160;--vel:0.25"></b>
+  <b style="grid-area:43/145/44/146;--vel:1"></b>
+  <b style="grid-area:43/149/44/150;--vel:1"></b>
+  <b style="grid-area:43/153/44/154;--vel:1"></b>
+  <b style="grid-area:43/157/44/158;--vel:1"></b>
+  <b style="grid-area:17/149/18/150;--vel:0.9"></b>
+  <b style="grid-area:17/157/18/158;--vel:0.9"></b>
+  <b style="grid-area:1/161/2/162;--vel:0.45"></b>
+  <b style="grid-area:1/163/2/164;--vel:0.25"></b>
+  <b style="grid-area:1/165/2/166;--vel:0.45"></b>
+  <b style="grid-area:1/167/2/168;--vel:0.25"></b>
+  <b style="grid-area:1/169/2/170;--vel:0.45"></b>
+  <b style="grid-area:1/171/2/172;--vel:0.25"></b>
+  <b style="grid-area:1/173/2/174;--vel:0.45"></b>
+  <b style="grid-area:1/175/2/176;--vel:0.25"></b>
+  <b style="grid-area:43/161/44/162;--vel:1"></b>
+  <b style="grid-area:43/165/44/166;--vel:1"></b>
+  <b style="grid-area:43/169/44/170;--vel:1"></b>
+  <b style="grid-area:43/173/44/174;--vel:1"></b>
+  <b style="grid-area:17/165/18/166;--vel:0.9"></b>
+  <b style="grid-area:17/173/18/174;--vel:0.9"></b>
+  <b style="grid-area:1/177/2/178;--vel:0.45"></b>
+  <b style="grid-area:1/179/2/180;--vel:0.25"></b>
+  <b style="grid-area:1/181/2/182;--vel:0.45"></b>
+  <b style="grid-area:1/183/2/184;--vel:0.25"></b>
+  <b style="grid-area:1/185/2/186;--vel:0.45"></b>
+  <b style="grid-area:1/187/2/188;--vel:0.25"></b>
+  <b style="grid-area:1/189/2/190;--vel:0.45"></b>
+  <b style="grid-area:1/191/2/192;--vel:0.25"></b>
+  <b style="grid-area:43/177/44/178;--vel:1"></b>
+  <b style="grid-area:43/181/44/182;--vel:1"></b>
+  <b style="grid-area:43/185/44/186;--vel:1"></b>
+  <b style="grid-area:43/189/44/190;--vel:1"></b>
+  <b style="grid-area:17/181/18/182;--vel:0.9"></b>
+  <b style="grid-area:17/189/18/190;--vel:0.9"></b>
+  <b style="grid-area:1/193/2/194;--vel:0.45"></b>
+  <b style="grid-area:1/194/2/195;--vel:0.25"></b>
+  <b style="grid-area:1/195/2/196;--vel:0.25"></b>
+  <b style="grid-area:1/196/2/197;--vel:0.25"></b>
+  <b style="grid-area:1/197/2/198;--vel:0.45"></b>
+  <b style="grid-area:1/198/2/199;--vel:0.25"></b>
+  <b style="grid-area:1/199/2/200;--vel:0.25"></b>
+  <b style="grid-area:1/200/2/201;--vel:0.25"></b>
+  <b style="grid-area:1/201/2/202;--vel:0.45"></b>
+  <b style="grid-area:1/202/2/203;--vel:0.25"></b>
+  <b style="grid-area:1/203/2/204;--vel:0.25"></b>
+  <b style="grid-area:1/204/2/205;--vel:0.25"></b>
+  <b style="grid-area:1/205/2/206;--vel:0.45"></b>
+  <b style="grid-area:1/206/2/207;--vel:0.25"></b>
+  <b style="grid-area:1/207/2/208;--vel:0.25"></b>
+  <b style="grid-area:1/208/2/209;--vel:0.25"></b>
+  <b style="grid-area:43/193/44/194;--vel:1"></b>
+  <b style="grid-area:43/197/44/198;--vel:1"></b>
+  <b style="grid-area:43/201/44/202;--vel:1"></b>
+  <b style="grid-area:43/205/44/206;--vel:1"></b>
+  <b style="grid-area:17/197/18/198;--vel:0.9"></b>
+  <b style="grid-area:17/205/18/206;--vel:0.9"></b>
+  <b style="grid-area:1/209/2/210;--vel:0.45"></b>
+  <b style="grid-area:1/210/2/211;--vel:0.25"></b>
+  <b style="grid-area:1/211/2/212;--vel:0.25"></b>
+  <b style="grid-area:1/212/2/213;--vel:0.25"></b>
+  <b style="grid-area:1/213/2/214;--vel:0.45"></b>
+  <b style="grid-area:1/214/2/215;--vel:0.25"></b>
+  <b style="grid-area:1/215/2/216;--vel:0.25"></b>
+  <b style="grid-area:1/216/2/217;--vel:0.25"></b>
+  <b style="grid-area:1/217/2/218;--vel:0.45"></b>
+  <b style="grid-area:1/218/2/219;--vel:0.25"></b>
+  <b style="grid-area:1/219/2/220;--vel:0.25"></b>
+  <b style="grid-area:1/220/2/221;--vel:0.25"></b>
+  <b style="grid-area:1/221/2/222;--vel:0.45"></b>
+  <b style="grid-area:1/222/2/223;--vel:0.25"></b>
+  <b style="grid-area:1/223/2/224;--vel:0.25"></b>
+  <b style="grid-area:1/224/2/225;--vel:0.25"></b>
+  <b style="grid-area:43/209/44/210;--vel:1"></b>
+  <b style="grid-area:43/213/44/214;--vel:1"></b>
+  <b style="grid-area:43/217/44/218;--vel:1"></b>
+  <b style="grid-area:43/221/44/222;--vel:1"></b>
+  <b style="grid-area:17/213/18/214;--vel:0.9"></b>
+  <b style="grid-area:17/221/18/222;--vel:0.9"></b>
+  <b style="grid-area:1/225/2/226;--vel:0.45"></b>
+  <b style="grid-area:1/226/2/227;--vel:0.25"></b>
+  <b style="grid-area:1/227/2/228;--vel:0.25"></b>
+  <b style="grid-area:1/228/2/229;--vel:0.25"></b>
+  <b style="grid-area:1/229/2/230;--vel:0.45"></b>
+  <b style="grid-area:1/230/2/231;--vel:0.25"></b>
+  <b style="grid-area:1/231/2/232;--vel:0.25"></b>
+  <b style="grid-area:1/232/2/233;--vel:0.25"></b>
+  <b style="grid-area:1/233/2/234;--vel:0.45"></b>
+  <b style="grid-area:1/234/2/235;--vel:0.25"></b>
+  <b style="grid-area:1/235/2/236;--vel:0.25"></b>
+  <b style="grid-area:1/236/2/237;--vel:0.25"></b>
+  <b style="grid-area:1/237/2/238;--vel:0.45"></b>
+  <b style="grid-area:1/238/2/239;--vel:0.25"></b>
+  <b style="grid-area:1/239/2/240;--vel:0.25"></b>
+  <b style="grid-area:1/240/2/241;--vel:0.25"></b>
+  <b style="grid-area:43/225/44/226;--vel:1"></b>
+  <b style="grid-area:43/229/44/230;--vel:1"></b>
+  <b style="grid-area:43/233/44/234;--vel:1"></b>
+  <b style="grid-area:43/237/44/238;--vel:1"></b>
+  <b style="grid-area:17/229/18/230;--vel:0.9"></b>
+  <b style="grid-area:17/237/18/238;--vel:0.9"></b>
+  <b style="grid-area:1/241/2/242;--vel:0.45"></b>
+  <b style="grid-area:1/242/2/243;--vel:0.25"></b>
+  <b style="grid-area:1/243/2/244;--vel:0.25"></b>
+  <b style="grid-area:1/244/2/245;--vel:0.25"></b>
+  <b style="grid-area:1/245/2/246;--vel:0.45"></b>
+  <b style="grid-area:1/246/2/247;--vel:0.25"></b>
+  <b style="grid-area:1/247/2/248;--vel:0.25"></b>
+  <b style="grid-area:1/248/2/249;--vel:0.25"></b>
+  <b style="grid-area:1/249/2/250;--vel:0.45"></b>
+  <b style="grid-area:1/250/2/251;--vel:0.25"></b>
+  <b style="grid-area:1/251/2/252;--vel:0.25"></b>
+  <b style="grid-area:1/252/2/253;--vel:0.25"></b>
+  <b style="grid-area:1/253/2/254;--vel:0.45"></b>
+  <b style="grid-area:1/254/2/255;--vel:0.25"></b>
+  <b style="grid-area:1/255/2/256;--vel:0.25"></b>
+  <b style="grid-area:1/256/2/257;--vel:0.25"></b>
+  <b style="grid-area:43/241/44/242;--vel:1"></b>
+  <b style="grid-area:43/245/44/246;--vel:1"></b>
+  <b style="grid-area:43/249/44/250;--vel:1"></b>
+  <b style="grid-area:17/245/18/246;--vel:0.9"></b>
+  <b style="grid-area:17/125/18/126;--vel:0.5"></b>
+  <b style="grid-area:17/126/18/127;--vel:0.65"></b>
+  <b style="grid-area:17/127/18/128;--vel:0.8"></b>
+  <b style="grid-area:17/128/18/129;--vel:1"></b>
+  <b style="grid-area:17/251/18/252;--vel:0.4"></b>
+  <b style="grid-area:17/253/18/254;--vel:0.6"></b>
+  <b style="grid-area:17/254/18/255;--vel:0.7"></b>
+  <b style="grid-area:17/255/18/256;--vel:0.85"></b>
+  <b style="grid-area:17/256/18/257;--vel:1"></b>
+  <b style="grid-area:36/1/37/3;--vel:0.9"></b>
+  <b style="grid-area:36/129/37/131;--vel:0.9"></b>
+  <b style="grid-area:36/193/37/195;--vel:0.8"></b>
+</section>
+</main>
+</div>
+<script>
+const ROWS = 48;
+const TOP_MIDI = 83;
+const NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const docEl = document.documentElement;
+const rollFound = document.querySelector("#roll");
+const wrapFound = document.querySelector("#wrap");
+if (rollFound instanceof HTMLElement && wrapFound instanceof HTMLElement) {
+  init(rollFound, wrapFound);
+}
+function init(roll, wrap) {
+  const cssNum = (el, prop, fallback) => {
+    const v = parseFloat(getComputedStyle(el).getPropertyValue(prop));
+    return Number.isFinite(v) ? v : fallback;
+  };
+  const cssStr = (el, prop) => getComputedStyle(el).getPropertyValue(prop).trim();
+  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+  const bpm = () => cssNum(docEl, "--bpm", 120);
+  const steps = () => Math.max(1, Math.round(cssNum(roll, "--steps", 64)));
+  const cellW = () => cssNum(docEl, "--cw", 18);
+  const rowH = () => cssNum(docEl, "--rh", 16);
+  const stepSec = () => 15 / bpm();
+  const tracks = () => {
+    const found = [];
+    for (const t of roll.querySelectorAll(".trk")) {
+      if (t instanceof HTMLElement)
+        found.push(t);
+    }
+    return found;
+  };
+  const gridBox = (b) => {
+    const row = parseInt(b.style.gridRowStart, 10);
+    const c1 = parseInt(b.style.gridColumnStart, 10);
+    if (!Number.isFinite(row) || !Number.isFinite(c1))
+      return null;
+    const c2 = parseInt(b.style.gridColumnEnd, 10);
+    const vel = parseFloat(getComputedStyle(b).getPropertyValue("--vel"));
+    return {
+      step: c1 - 1,
+      len: Number.isFinite(c2) ? Math.max(c2 - c1, 1) : 1,
+      midi: TOP_MIDI - (row - 1),
+      vel: Number.isFinite(vel) ? vel : 1,
+      el: b,
+      pseudo: null
+    };
+  };
+  const snap = (v) => {
+    const r = Math.round(v);
+    return Math.abs(v - r) < 0.02 ? r : v;
+  };
+  const geoBox = (b) => {
+    const r = b.getBoundingClientRect();
+    if (r.width < 0.5 || r.height < 0.5)
+      return null;
+    const base = roll.getBoundingClientRect();
+    const vel = parseFloat(getComputedStyle(b).getPropertyValue("--vel"));
+    return {
+      step: snap((r.left - base.left) / cellW()),
+      len: snap(r.width / cellW()),
+      midi: snap(TOP_MIDI - ((r.top + r.height / 2 - base.top) / rowH() - 0.5)),
+      vel: Number.isFinite(vel) ? vel : 1,
+      el: b,
+      pseudo: null
+    };
+  };
+  const setBox = (b, step, len, midi) => {
+    const row = TOP_MIDI - midi + 1;
+    b.style.gridArea = `${row}/${step + 1}/${row + 1}/${step + 1 + len}`;
+  };
+  const PSEUDOS = ["::before", "::after"];
+  const pseudoBox = (trk, which) => {
+    const ps = getComputedStyle(trk, which);
+    if (ps.content === "none" || ps.content === "normal" || ps.display === "none")
+      return null;
+    const row = parseInt(ps.gridRowStart, 10);
+    const c1 = parseInt(ps.gridColumnStart, 10);
+    if (!Number.isFinite(row) || !Number.isFinite(c1))
+      return null;
+    const c2 = parseInt(ps.gridColumnEnd, 10);
+    const span = Number.isFinite(c2) ? Math.max(c2 - c1, 1) : 1;
+    let dx = 0;
+    let dy = 0;
+    let sx = 1;
+    const tf = ps.transform;
+    if (tf.startsWith("matrix(")) {
+      const p = tf.slice(7, -1).split(",").map((v) => parseFloat(v));
+      sx = p[0] ?? 1;
+      dx = p[4] ?? 0;
+      dy = p[5] ?? 0;
+    }
+    const vel = parseFloat(ps.getPropertyValue("--vel"));
+    return {
+      step: snap(c1 - 1 + dx / cellW()),
+      len: snap(span * sx),
+      midi: snap(TOP_MIDI - (row - 1) - dy / rowH()),
+      vel: Number.isFinite(vel) ? vel : 1,
+      el: null,
+      pseudo: which
+    };
+  };
+  const CACHE_TTL = 2;
+  let cacheGen = 0;
+  let cacheJitter = 0;
+  const boxCache = new WeakMap;
+  const bumpCache = () => {
+    cacheGen++;
+  };
+  new MutationObserver((muts) => {
+    for (const m of muts) {
+      const t = m.target;
+      const el = t instanceof Element ? t : t.parentElement;
+      if (el !== null && el.closest("[data-chrome]") !== null)
+        continue;
+      cacheGen++;
+      return;
+    }
+  }).observe(docEl, { subtree: true, childList: true, attributes: true, characterData: true });
+  window.addEventListener("input", bumpCache, true);
+  window.addEventListener("change", bumpCache, true);
+  window.addEventListener("hashchange", bumpCache);
+  window.addEventListener("resize", bumpCache);
+  const trackBoxes = (trk, now) => {
+    const hit = boxCache.get(trk);
+    if (hit !== undefined && !hit.animated && hit.gen === cacheGen && now - hit.at < hit.ttl) {
+      return hit.boxes;
+    }
+    const boxes = [];
+    for (const b of trk.children) {
+      if (!(b instanceof HTMLElement) || b.tagName !== "B")
+        continue;
+      const nb = geoBox(b);
+      if (nb)
+        boxes.push(nb);
+    }
+    for (const which of PSEUDOS) {
+      const nb = pseudoBox(trk, which);
+      if (nb)
+        boxes.push(nb);
+    }
+    const animated = trk.getAnimations({ subtree: true }).length > 0;
+    boxCache.set(trk, { gen: cacheGen, at: now, ttl: CACHE_TTL + cacheJitter++ % 8 * 0.17, animated, boxes });
+    return boxes;
+  };
+  const ensureTrack = () => {
+    const t = tracks()[0];
+    if (t)
+      return t;
+    const s = document.createElement("section");
+    s.className = "trk";
+    s.dataset.name = "Track 1";
+    s.style.cssText = "--wave:square;--vol:0.3;--hue:200";
+    roll.append(s);
+    return s;
+  };
+  let live = ensureTrack();
+  let engine = null;
+  const audio = () => {
+    if (engine)
+      return engine;
+    const ctx = new AudioContext;
+    const comp = ctx.createDynamicsCompressor();
+    comp.connect(ctx.destination);
+    const sat = ctx.createWaveShaper();
+    const curve = new Float32Array(1024);
+    for (let i = 0;i < curve.length; i++) {
+      const x = i / (curve.length - 1) * 2 - 1;
+      curve[i] = Math.tanh(1.5 * x) / Math.tanh(1.5);
+    }
+    sat.curve = curve;
+    sat.oversample = "2x";
+    sat.connect(comp);
+    const out = ctx.createGain();
+    out.gain.value = 0.85;
+    out.connect(sat);
+    const duck = ctx.createGain();
+    duck.gain.value = 1;
+    duck.connect(out);
+    const ir = ctx.createBuffer(2, Math.floor(ctx.sampleRate * 2.2), ctx.sampleRate);
+    for (let ch = 0;ch < 2; ch++) {
+      const d = ir.getChannelData(ch);
+      for (let i = 0;i < d.length; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.6);
+      }
+    }
+    const convolver = ctx.createConvolver();
+    convolver.buffer = ir;
+    const verb = ctx.createGain();
+    verb.gain.value = 0.9;
+    verb.connect(convolver);
+    convolver.connect(duck);
+    const echo = ctx.createGain();
+    const echoDelay = ctx.createDelay(3);
+    const echoDelay2 = ctx.createDelay(3);
+    const et = stepSec() * cssNum(docEl, "--echo-time", 3);
+    echoDelay.delayTime.value = et;
+    echoDelay2.delayTime.value = et;
+    const pL = ctx.createStereoPanner();
+    pL.pan.value = -0.6;
+    const pR = ctx.createStereoPanner();
+    pR.pan.value = 0.6;
+    const damp = ctx.createBiquadFilter();
+    damp.type = "lowpass";
+    damp.frequency.value = 3200;
+    const fb = ctx.createGain();
+    fb.gain.value = 0.45;
+    echo.connect(echoDelay);
+    echoDelay.connect(pL);
+    pL.connect(duck);
+    echoDelay.connect(echoDelay2);
+    echoDelay2.connect(pR);
+    pR.connect(duck);
+    echoDelay2.connect(damp);
+    damp.connect(fb);
+    fb.connect(echoDelay);
+    const kickCurve = new Float32Array(512);
+    for (let i = 0;i < kickCurve.length; i++) {
+      const x = i / (kickCurve.length - 1) * 2 - 1;
+      kickCurve[i] = Math.tanh(3 * x) / Math.tanh(3);
+    }
+    const noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const data = noise.getChannelData(0);
+    for (let i = 0;i < data.length; i++)
+      data[i] = Math.random() * 2 - 1;
+    const mkWave = (harmonics) => {
+      const re = new Float32Array(harmonics.length + 1);
+      const im = new Float32Array(harmonics.length + 1);
+      for (let i = 0;i < harmonics.length; i++)
+        im[i + 1] = harmonics[i] ?? 0;
+      return ctx.createPeriodicWave(re, im);
+    };
+    const pulse = (duty) => {
+      const h = [];
+      for (let n = 1;n <= 24; n++)
+        h.push(2 / (n * Math.PI) * Math.sin(Math.PI * n * duty));
+      return h;
+    };
+    const waves = {
+      pulse25: mkWave(pulse(0.25)),
+      pulse125: mkWave(pulse(0.125)),
+      organ: mkWave([1, 0.9, 0.75, 0.4, 0.1, 0.25, 0.05, 0.18, 0, 0.05]),
+      ep: mkWave([1, 0.35, 0.12, 0.28, 0.05, 0.02, 0.09, 0.01]),
+      brass: mkWave([1, 0.68, 0.58, 0.34, 0.26, 0.18, 0.13, 0.09, 0.06, 0.04, 0.025, 0.015]),
+      glass: mkWave([1, 0, 0.05, 0.45, 0, 0.02, 0, 0, 0.28, 0, 0, 0.12])
+    };
+    engine = { ctx, out, duck, verb, echo, echoDelay, echoDelay2, noise, kickCurve, waves };
+    return engine;
+  };
+  let voices = [];
+  const playNote = (trk, nb, when, dur) => {
+    const { ctx, out, noise } = audio();
+    const vol = cssNum(trk, "--vol", 0.3) * nb.vel;
+    if (vol <= 0)
+      return;
+    const wave = cssStr(trk, "--wave");
+    if (wave === "voice") {
+      if (typeof speechSynthesis === "undefined")
+        return;
+      const text = nb.el === null ? "" : (nb.el.textContent ?? "").trim();
+      if (text === "")
+        return;
+      window.setTimeout(() => {
+        const u = new SpeechSynthesisUtterance(text);
+        u.pitch = clamp(Math.pow(2, (nb.midi - 60) / 12), 0, 2);
+        u.rate = 0.9;
+        u.volume = clamp(vol * 2, 0, 1);
+        speechSynthesis.speak(u);
+      }, Math.max((when - ctx.currentTime) * 1000, 0));
+      return;
+    }
+    const freq = 440 * Math.pow(2, (nb.midi - 69) / 12);
+    const cutBase = cssNum(trk, "--cutoff", 0);
+    const cutoff = cutBase > 0 ? cutBase * (0.6 + 0.4 * Math.min(nb.vel, 1.25)) : 0;
+    const env = ctx.createGain();
+    const lvl = ctx.createGain();
+    env.connect(lvl);
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = clamp(cssNum(trk, "--pan", 0) + (nb.midi - 64) / 64 * cssNum(trk, "--width", 0.3), -1, 1);
+    lvl.connect(pan);
+    const { duck } = audio();
+    const kickish = wave === "noise" && nb.midi < 50;
+    pan.connect(kickish ? out : duck);
+    const { verb, echo } = audio();
+    const vAmt = cssNum(trk, "--verb", 0.15);
+    if (vAmt > 0) {
+      const vs = ctx.createGain();
+      vs.gain.value = vAmt;
+      pan.connect(vs);
+      vs.connect(verb);
+    }
+    const eAmt = cssNum(trk, "--echo", 0);
+    if (eAmt > 0) {
+      const es = ctx.createGain();
+      es.gain.value = eAmt;
+      pan.connect(es);
+      es.connect(echo);
+    }
+    if (wave === "clap") {
+      lvl.gain.value = vol;
+      const src = ctx.createBufferSource();
+      src.buffer = noise;
+      src.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = clamp(freq * 5, 400, 8000);
+      bp.Q.value = 1.1;
+      src.connect(bp);
+      bp.connect(env);
+      env.gain.setValueAtTime(0, when);
+      for (const t of [0, 0.012, 0.026]) {
+        env.gain.setValueAtTime(0.95, when + t);
+        env.gain.exponentialRampToValueAtTime(0.05, when + t + 0.011);
+      }
+      env.gain.setValueAtTime(0.8, when + 0.03);
+      env.gain.exponentialRampToValueAtTime(0.004, when + 0.2);
+      src.start(when);
+      src.stop(when + 0.25);
+    } else if (wave === "noise") {
+      lvl.gain.value = vol;
+      if (nb.midi < 50) {
+        const depth = clamp(cssNum(docEl, "--duck", 0), 0, 0.9);
+        if (depth > 0) {
+          duck.gain.setTargetAtTime(1 - depth, when, 0.012);
+          duck.gain.setTargetAtTime(1, when + 0.07, 0.09);
+        }
+        const { kickCurve } = audio();
+        const shp = ctx.createWaveShaper();
+        shp.curve = kickCurve;
+        shp.connect(env);
+        const osc = ctx.createOscillator();
+        osc.frequency.setValueAtTime(freq * 5, when);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(freq, 35), when + 0.05);
+        osc.connect(shp);
+        const click = ctx.createBufferSource();
+        click.buffer = noise;
+        const cg = ctx.createGain();
+        cg.gain.setValueAtTime(0.35, when);
+        cg.gain.exponentialRampToValueAtTime(0.004, when + 0.02);
+        click.connect(cg);
+        cg.connect(env);
+        env.gain.setValueAtTime(0, when);
+        env.gain.linearRampToValueAtTime(1, when + 0.004);
+        env.gain.exponentialRampToValueAtTime(0.004, when + 0.3);
+        osc.start(when);
+        osc.stop(when + 0.35);
+        click.start(when);
+        click.stop(when + 0.04);
+      } else if (nb.midi >= 76) {
+        const decay = nb.midi >= 80 ? 0.05 : 0.25;
+        lvl.gain.value = vol * 0.7;
+        const hp = ctx.createBiquadFilter();
+        hp.type = "highpass";
+        hp.frequency.value = clamp(freq * 5.5, 3000, 12000);
+        hp.connect(env);
+        const base = clamp(freq * 1.4, 250, 900);
+        for (const r of [1, 1.2312, 1.342, 1.6532, 1.9523, 2.1523]) {
+          const o = ctx.createOscillator();
+          o.type = "square";
+          o.frequency.value = base * r * 2;
+          o.connect(hp);
+          o.start(when);
+          o.stop(when + decay + 0.05);
+        }
+        env.gain.setValueAtTime(0, when);
+        env.gain.linearRampToValueAtTime(1, when + 0.002);
+        env.gain.exponentialRampToValueAtTime(0.004, when + decay);
+      } else {
+        const tomy = nb.midi < 63;
+        const decay = tomy ? 0.25 : 0.14;
+        const src = ctx.createBufferSource();
+        src.buffer = noise;
+        src.loop = true;
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = clamp(freq * 5, 120, 12000);
+        bp.Q.value = 0.7;
+        src.connect(bp);
+        let tail = bp;
+        if (cutoff > 0) {
+          const lp = ctx.createBiquadFilter();
+          lp.type = "lowpass";
+          lp.frequency.value = clamp(cutoff, 40, 18000);
+          tail.connect(lp);
+          tail = lp;
+        }
+        tail.connect(env);
+        if (!tomy) {
+          const hp = ctx.createBiquadFilter();
+          hp.type = "highpass";
+          hp.frequency.value = 4000;
+          src.connect(hp);
+          const sg = ctx.createGain();
+          sg.gain.setValueAtTime(0.8, when);
+          sg.gain.exponentialRampToValueAtTime(0.01, when + 0.06);
+          hp.connect(sg);
+          sg.connect(env);
+        }
+        const tone = ctx.createOscillator();
+        tone.type = "triangle";
+        tone.frequency.value = freq;
+        const tg = ctx.createGain();
+        tg.gain.setValueAtTime(tomy ? 0.7 : 0.5, when);
+        tg.gain.exponentialRampToValueAtTime(0.004, when + (tomy ? 0.16 : 0.08));
+        tone.connect(tg);
+        tg.connect(env);
+        tone.start(when);
+        tone.stop(when + (tomy ? 0.2 : 0.1));
+        env.gain.setValueAtTime(0, when);
+        env.gain.linearRampToValueAtTime(1, when + 0.003);
+        env.gain.exponentialRampToValueAtTime(0.004, when + decay);
+        src.start(when);
+        src.stop(when + decay + 0.05);
+      }
+    } else {
+      const attack = clamp(cssNum(trk, "--attack", 0.005), 0.001, Math.max(dur - 0.02, 0.02));
+      const release = clamp(cssNum(trk, "--release", 0.04), 0.005, 2);
+      const spread = cssNum(trk, "--spread", 0);
+      let dest = env;
+      if (cutoff > 0) {
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        const fenv = cssNum(trk, "--fenv", 0);
+        if (fenv > 0) {
+          lp.Q.value = 0.9;
+          lp.frequency.setValueAtTime(clamp(cutoff * 0.3, 40, 18000), when);
+          lp.frequency.exponentialRampToValueAtTime(clamp(cutoff * (1 + fenv), 40, 18000), when + 0.04);
+          lp.frequency.exponentialRampToValueAtTime(clamp(cutoff, 40, 18000), when + 0.2);
+        } else {
+          lp.Q.value = 0.5;
+          lp.frequency.value = clamp(cutoff, 40, 18000);
+        }
+        lp.connect(env);
+        dest = lp;
+      }
+      const { waves } = audio();
+      const custom = waves[wave];
+      const type = wave === "triangle" || wave === "square" || wave === "sawtooth" ? wave : "sine";
+      const detunes = spread > 0 ? [-spread / 2, spread / 2] : [0];
+      const mul = detunes.length > 1 ? 0.65 : 1;
+      lvl.gain.value = vol * mul;
+      const end = when + Math.max(dur - 0.01, 0.05);
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(1, when + attack);
+      env.gain.linearRampToValueAtTime(0.75, Math.max(end - 0.02, when + attack));
+      env.gain.linearRampToValueAtTime(0, end + release);
+      const oscs = [];
+      for (const det of detunes) {
+        const osc = ctx.createOscillator();
+        if (custom)
+          osc.setPeriodicWave(custom);
+        else
+          osc.type = type;
+        osc.frequency.value = freq;
+        osc.detune.value = det;
+        osc.connect(dest);
+        osc.start(when);
+        osc.stop(end + release + 0.05);
+        oscs.push(osc);
+      }
+      const vib = cssNum(trk, "--vibrato", 0);
+      if (vib > 0) {
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = Math.max(cssNum(trk, "--vib-rate", 5), 0.1);
+        const depth = ctx.createGain();
+        depth.gain.setValueAtTime(0, when);
+        depth.gain.linearRampToValueAtTime(vib, when + 0.25);
+        lfo.connect(depth);
+        for (const o of oscs)
+          depth.connect(o.detune);
+        lfo.start(when);
+        lfo.stop(end + release + 0.05);
+      }
+      voices.push({ trk, nb, oscs, lvl, mul, until: end + release });
+    }
+  };
+  const updateVoices = (now) => {
+    voices = voices.filter((v) => v.until > now);
+    for (const v of voices) {
+      const cur = v.nb.el !== null ? geoBox(v.nb.el) : v.nb.pseudo !== null ? pseudoBox(v.trk, v.nb.pseudo) : null;
+      if (!cur) {
+        v.lvl.gain.setTargetAtTime(0, now, 0.05);
+        continue;
+      }
+      const freq = 440 * Math.pow(2, (cur.midi - 69) / 12);
+      for (const o of v.oscs)
+        o.frequency.setTargetAtTime(freq, now, 0.04);
+      v.lvl.gain.setTargetAtTime(cssNum(v.trk, "--vol", 0.3) * cur.vel * v.mul, now, 0.08);
+    }
+  };
+  for (const stale of document.querySelectorAll("[data-chrome]"))
+    stale.remove();
+  const ph = document.createElement("div");
+  ph.id = "ph";
+  ph.dataset.chrome = "1";
+  roll.append(ph);
+  const keys = document.createElement("div");
+  keys.id = "keys";
+  keys.dataset.chrome = "1";
+  for (let row = 1;row <= ROWS; row++) {
+    const midi = TOP_MIDI - (row - 1);
+    const name = NAMES[midi % 12] ?? "";
+    const cell = document.createElement("div");
+    if (name.includes("#"))
+      cell.className = "bk";
+    if (name === "C") {
+      cell.className = "c";
+      cell.textContent = "C" + String(Math.floor(midi / 12) - 1);
+    }
+    keys.append(cell);
+  }
+  wrap.prepend(keys);
+  const songCss = (() => {
+    const found = document.querySelector("style#songcss");
+    if (found instanceof HTMLStyleElement)
+      return found;
+    const s = document.createElement("style");
+    s.id = "songcss";
+    document.head.append(s);
+    return s;
+  })();
+  const cssPanel = document.createElement("aside");
+  cssPanel.id = "csspanel";
+  cssPanel.dataset.chrome = "1";
+  const cssHead = document.createElement("header");
+  cssHead.textContent = "song css — edits apply live and save with the file";
+  const cssArea = document.createElement("textarea");
+  cssArea.spellcheck = false;
+  cssArea.value = songCss.textContent ?? "";
+  cssArea.addEventListener("input", () => {
+    songCss.textContent = cssArea.value;
+  });
+  cssArea.addEventListener("keydown", (e) => {
+    if (e.key === "Escape")
+      cssArea.blur();
+    if (e.key !== "Tab")
+      return;
+    e.preventDefault();
+    cssArea.setRangeText("  ", cssArea.selectionStart, cssArea.selectionEnd, "end");
+    songCss.textContent = cssArea.value;
+  });
+  cssPanel.append(cssHead, cssArea);
+  document.body.append(cssPanel);
+  const button = (label, onClick) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.addEventListener("click", onClick);
+    return b;
+  };
+  const labeled = (text, input) => {
+    const l = document.createElement("label");
+    l.append(text, input);
+    return l;
+  };
+  const numInput = (value, min, max, onChange) => {
+    const i = document.createElement("input");
+    i.type = "number";
+    i.min = String(min);
+    i.max = String(max);
+    i.value = String(value);
+    i.addEventListener("change", () => {
+      const v = clamp(parseFloat(i.value), min, max);
+      if (Number.isFinite(v)) {
+        i.value = String(v);
+        onChange(v);
+      }
+    });
+    return i;
+  };
+  const bar = document.createElement("header");
+  bar.id = "bar";
+  bar.dataset.chrome = "1";
+  const playBtn = button("▶ play", () => toggle());
+  playBtn.id = "play";
+  const bpmIn = numInput(bpm(), 40, 300, (v) => {
+    docEl.style.setProperty("--bpm", String(v));
+  });
+  const stepsIn = numInput(steps(), 16, 256, (v) => {
+    roll.style.setProperty("--steps", String(v));
+  });
+  const chips = [];
+  for (const trk of tracks()) {
+    const chip = button(trk.dataset.name ?? "track", () => setLive(trk));
+    chip.className = "chip";
+    chip.style.setProperty("--hue", String(cssNum(trk, "--hue", 0)));
+    chips.push({ chip, trk });
+  }
+  const waveSel = document.createElement("select");
+  for (const w of ["sine", "triangle", "square", "sawtooth", "pulse25", "pulse125", "organ", "ep", "brass", "glass", "noise", "clap", "voice"]) {
+    const o = document.createElement("option");
+    o.value = w;
+    o.textContent = w;
+    waveSel.append(o);
+  }
+  waveSel.addEventListener("change", () => {
+    live.style.setProperty("--wave", waveSel.value);
+  });
+  const volIn = document.createElement("input");
+  volIn.type = "range";
+  volIn.min = "0";
+  volIn.max = "1";
+  volIn.step = "0.05";
+  volIn.addEventListener("input", () => {
+    live.style.setProperty("--vol", volIn.value);
+  });
+  const titleIn = document.createElement("input");
+  titleIn.type = "text";
+  titleIn.value = document.title;
+  titleIn.addEventListener("input", () => {
+    document.title = titleIn.value;
+  });
+  const cssBtn = button("{ } css", () => {
+    const open = !cssPanel.classList.contains("open");
+    cssPanel.classList.toggle("open", open);
+    document.body.classList.toggle("css-open", open);
+    cssBtn.classList.toggle("on", open);
+    if (open) {
+      cssPanel.style.top = `${wrap.getBoundingClientRect().top}px`;
+      cssArea.focus();
+    }
+  });
+  cssBtn.id = "cssbtn";
+  const hint = document.createElement("span");
+  hint.className = "hint";
+  hint.textContent = "draw: drag · move: drag note · resize: right edge · delete: alt-click · space: play";
+  bar.append(playBtn, labeled("bpm", bpmIn), labeled("steps", stepsIn), ...chips.map((c) => c.chip), labeled("wave", waveSel), labeled("vol", volIn), labeled("song", titleIn), cssBtn, button("save .html", () => save()), hint);
+  document.body.prepend(bar);
+  function setLive(trk) {
+    live = trk;
+    for (const t of tracks())
+      t.classList.toggle("live", t === trk);
+    for (const c of chips)
+      c.chip.classList.toggle("on", c.trk === trk);
+    const w = cssStr(trk, "--wave");
+    waveSel.value = w === "" ? "sine" : w;
+    volIn.value = String(cssNum(trk, "--vol", 0.3));
+  }
+  let playing = false;
+  let startAt = 0;
+  let nextStep = 0;
+  let timer = 0;
+  let lastSd = 0;
+  function tick() {
+    const { ctx, echoDelay, echoDelay2 } = audio();
+    const sd = stepSec();
+    if (sd !== lastSd) {
+      if (lastSd > 0)
+        startAt += nextStep * (lastSd - sd);
+      lastSd = sd;
+      const et = sd * cssNum(docEl, "--echo-time", 3);
+      echoDelay.delayTime.setTargetAtTime(et, ctx.currentTime, 0.1);
+      echoDelay2.delayTime.setTargetAtTime(et, ctx.currentTime, 0.1);
+    }
+    const n = steps();
+    const form = Math.max(1, Math.round(cssNum(docEl, "--form", 1)));
+    if (form > 1) {
+      const t = Math.max(0, ctx.currentTime - startAt);
+      const pass = Math.floor(t / (sd * n)) % form;
+      if (docEl.dataset.pass !== String(pass))
+        docEl.dataset.pass = String(pass);
+    } else if (docEl.dataset.pass !== undefined) {
+      delete docEl.dataset.pass;
+    }
+    while (playing && startAt + nextStep * sd < ctx.currentTime + 0.18) {
+      for (const trk of tracks()) {
+        const lv = Math.round(cssNum(trk, "--loop", 0));
+        const L = lv >= 1 ? lv : n;
+        const sL = nextStep % L;
+        const boxes = trackBoxes(trk, ctx.currentTime);
+        for (const nb of boxes) {
+          const w = (nb.step % L + L) % L;
+          if (w >= sL && w < sL + 1) {
+            playNote(trk, nb, startAt + (nextStep + w - sL) * sd, nb.len * sd);
+          }
+        }
+      }
+      nextStep++;
+    }
+    updateVoices(ctx.currentTime);
+  }
+  function frame() {
+    if (!playing || !engine)
+      return;
+    const t = (engine.ctx.currentTime - startAt) / stepSec();
+    const x = (t < 0 ? 0 : t % steps()) * cellW();
+    ph.style.transform = `translateX(${x}px)`;
+    requestAnimationFrame(frame);
+  }
+  function play() {
+    const { ctx } = audio();
+    ctx.resume();
+    playing = true;
+    startAt = ctx.currentTime + 0.06;
+    nextStep = 0;
+    lastSd = 0;
+    tick();
+    timer = window.setInterval(tick, 30);
+    docEl.classList.add("playing");
+    playBtn.textContent = "■ stop";
+    playBtn.classList.add("on");
+    ph.style.display = "block";
+    requestAnimationFrame(frame);
+  }
+  function stop() {
+    playing = false;
+    window.clearInterval(timer);
+    voices = [];
+    delete docEl.dataset.pass;
+    docEl.classList.remove("playing");
+    playBtn.textContent = "▶ play";
+    playBtn.classList.remove("on");
+    ph.style.display = "none";
+  }
+  function toggle() {
+    if (playing)
+      stop();
+    else
+      play();
+  }
+  let drag = null;
+  const cellAt = (e) => {
+    const r = roll.getBoundingClientRect();
+    const col = clamp(Math.floor((e.clientX - r.left) / cellW()) + 1, 1, steps());
+    const row = clamp(Math.floor((e.clientY - r.top) / rowH()) + 1, 1, ROWS);
+    return { col, row };
+  };
+  roll.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0)
+      return;
+    const t = e.target;
+    const { col, row } = cellAt(e);
+    if (t instanceof HTMLElement && t.tagName === "B" && t.parentElement === live) {
+      if (e.altKey) {
+        t.remove();
+        return;
+      }
+      const nb = gridBox(t);
+      if (!nb)
+        return;
+      const rect = t.getBoundingClientRect();
+      drag = {
+        el: t,
+        mode: e.clientX > rect.right - 8 ? "resize" : "move",
+        grab: col - (nb.step + 1)
+      };
+    } else {
+      const b = document.createElement("b");
+      setBox(b, col - 1, 1, TOP_MIDI - (row - 1));
+      live.append(b);
+      drag = { el: b, mode: "resize", grab: 0 };
+    }
+    if (e.isTrusted)
+      roll.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  roll.addEventListener("pointermove", (e) => {
+    if (!drag)
+      return;
+    const { col, row } = cellAt(e);
+    const nb = gridBox(drag.el);
+    if (!nb)
+      return;
+    if (drag.mode === "move") {
+      const step = clamp(col - drag.grab - 1, 0, steps() - nb.len);
+      setBox(drag.el, step, nb.len, TOP_MIDI - (row - 1));
+    } else {
+      const len = clamp(col - nb.step, 1, steps() - nb.step);
+      setBox(drag.el, nb.step, len, nb.midi);
+    }
+  });
+  roll.addEventListener("pointerup", () => {
+    if (!drag)
+      return;
+    const nb = geoBox(drag.el);
+    drag = null;
+    if (nb) {
+      const { ctx } = audio();
+      playNote(live, nb, ctx.currentTime + 0.01, Math.min(nb.len * stepSec(), 0.35));
+    }
+  });
+  roll.addEventListener("contextmenu", (e) => {
+    const t = e.target;
+    if (t instanceof HTMLElement && t.tagName === "B" && t.parentElement === live) {
+      e.preventDefault();
+      t.remove();
+    }
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.code !== "Space")
+      return;
+    const t = e.target;
+    if (t instanceof HTMLInputElement || t instanceof HTMLSelectElement || t instanceof HTMLTextAreaElement)
+      return;
+    e.preventDefault();
+    toggle();
+  });
+  function save() {
+    if (playing)
+      stop();
+    const clone = docEl.cloneNode(true);
+    if (!(clone instanceof HTMLElement))
+      return;
+    for (const el of clone.querySelectorAll("[data-chrome]"))
+      el.remove();
+    for (const el of clone.querySelectorAll(".live"))
+      el.classList.remove("live");
+    clone.classList.remove("playing");
+    clone.removeAttribute("data-pass");
+    const bodyClone = clone.querySelector("body");
+    if (bodyClone)
+      bodyClone.classList.remove("css-open");
+    const file = `<!DOCTYPE html>
+` + clone.outerHTML;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([file], { type: "text/html" }));
+    a.download = (document.title.trim() || "song").replace(/[^\w-]+/g, "-").toLowerCase() + ".html";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  setLive(live);
+  wrap.scrollTop = Math.max(0, 28 * rowH() - wrap.clientHeight / 2);
+}
+</script>
+</body>
+</html>

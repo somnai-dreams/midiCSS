@@ -1,0 +1,230 @@
+/* midiCSS — the layout is the song. Rows are pitches (row 1 = B5 … row 48 = C2),
+   columns are 16th-note steps. Notes are <b> grid items; everything musical is
+   encoded in CSS custom properties (--bpm, --steps, --wave, --vol, --hue, --vel). */
+
+/* Registered properties: real interpolable numbers, so @keyframes on them
+   are automation lanes. Cascade = mix hierarchy: !important (mutes, media
+   queries) beats animations, animations beat inline base values. */
+@property --vol { syntax: "<number>"; inherits: true; initial-value: 0.3; }
+@property --bpm { syntax: "<number>"; inherits: true; initial-value: 120; }
+@property --vel { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --spread { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --cutoff { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --attack { syntax: "<number>"; inherits: true; initial-value: 0.005; }
+@property --release { syntax: "<number>"; inherits: true; initial-value: 0.04; }
+@property --loop { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --duck { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --form { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --pan { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --width { syntax: "<number>"; inherits: true; initial-value: 0.3; }
+@property --verb { syntax: "<number>"; inherits: true; initial-value: 0.15; }
+@property --echo { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --echo-time { syntax: "<number>"; inherits: true; initial-value: 3; }
+@property --fenv { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --vibrato { syntax: "<number>"; inherits: true; initial-value: 0; }
+@property --vib-rate { syntax: "<number>"; inherits: true; initial-value: 5; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { --cw: 18px; --rh: 16px; --panelw: min(400px, 80vw); color-scheme: dark; }
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #0e0f13;
+  color: #cfd3dc;
+  font: 13px/1.45 ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* ---- toolbar (chrome, rebuilt by JS on every load) ---- */
+#bar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #15171d;
+  border-bottom: 1px solid #232733;
+}
+#bar label { display: inline-flex; align-items: center; gap: 5px; color: #7b8294; font-size: 11px; }
+#bar button {
+  padding: 5px 11px;
+  background: #232733;
+  color: #cfd3dc;
+  border: 1px solid #303544;
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+#bar button:hover { background: #2b3040; }
+#bar input, #bar select {
+  background: #0e0f13;
+  color: #cfd3dc;
+  border: 1px solid #303544;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font: inherit;
+}
+#bar input[type="number"] { width: 58px; }
+#bar input[type="range"] { width: 80px; padding: 0; border: none; background: none; }
+#bar input[type="text"] { width: 130px; }
+#bar button.on { background: #3d52d5; border-color: #5e72ee; color: #fff; }
+.chip { display: inline-flex; align-items: center; gap: 6px; }
+.chip::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: hsl(var(--hue) 70% 58%); }
+.chip.on { border-color: hsl(var(--hue) 70% 58%); background: #2b3040; }
+.hint { margin-left: auto; color: #565d6e; font-size: 11px; }
+
+/* per-song css-only mixer (static song markup — works with JS off) */
+#mixer { flex: none; display: flex; flex-wrap: wrap; gap: 14px; padding: 6px 12px; background: #12141a; border-bottom: 1px solid #232733; font-size: 11px; color: #7b8294; }
+#mixer label { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+#mixer input { accent-color: #5e72ee; }
+#mixer a { color: #7a8cf0; text-decoration: none; }
+#mixer a:hover { text-decoration: underline; }
+
+/* ---- piano roll ---- */
+#wrap { flex: 1; display: flex; align-items: flex-start; overflow: auto; }
+
+#keys {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  flex: none;
+  display: grid;
+  grid-template-rows: repeat(48, var(--rh));
+  width: 44px;
+  height: calc(48 * var(--rh));
+  background: #15171d;
+  border-right: 1px solid #232733;
+}
+#keys div { font-size: 9px; line-height: var(--rh); padding-left: 6px; color: #7b8294; border-bottom: 1px solid #1a1d25; }
+#keys div.bk { background: #10131a; }
+#keys div.c { color: #aeb6c6; }
+
+#roll {
+  position: relative;
+  flex: none;
+  width: calc(var(--steps) * var(--cw));
+  height: calc(48 * var(--rh));
+  cursor: crosshair;
+  background-color: #0e0f13;
+  background-image:
+    /* bar lines */
+    repeating-linear-gradient(to right, #303544 0 1px, transparent 1px calc(var(--cw) * 16)),
+    /* beat lines */
+    repeating-linear-gradient(to right, #232733 0 1px, transparent 1px calc(var(--cw) * 4)),
+    /* row lines */
+    repeating-linear-gradient(to bottom, #1a1d25 0 1px, transparent 1px var(--rh)),
+    /* black-key rows: descending from B per octave -> A#, G#, F#, D#, C# */
+    repeating-linear-gradient(to bottom,
+      transparent 0 var(--rh),
+      #13151c var(--rh) calc(var(--rh) * 2),
+      transparent calc(var(--rh) * 2) calc(var(--rh) * 3),
+      #13151c calc(var(--rh) * 3) calc(var(--rh) * 4),
+      transparent calc(var(--rh) * 4) calc(var(--rh) * 5),
+      #13151c calc(var(--rh) * 5) calc(var(--rh) * 6),
+      transparent calc(var(--rh) * 6) calc(var(--rh) * 8),
+      #13151c calc(var(--rh) * 8) calc(var(--rh) * 9),
+      transparent calc(var(--rh) * 9) calc(var(--rh) * 10),
+      #13151c calc(var(--rh) * 10) calc(var(--rh) * 11),
+      transparent calc(var(--rh) * 11) calc(var(--rh) * 12)
+    );
+}
+
+/* ---- tracks: stacked transparent grids sharing the roll's coordinates ---- */
+.trk {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: repeat(48, var(--rh));
+  grid-template-columns: repeat(var(--steps), var(--cw));
+  grid-auto-columns: var(--cw);
+  pointer-events: none;
+}
+.trk.live { z-index: 2; }
+
+/* ---- notes: the data itself ---- */
+.trk b {
+  position: relative;
+  display: block;
+  min-width: 0;
+  border-radius: 3px;
+  border: 1px solid hsl(var(--hue) 75% 72% / 0.9);
+  background: hsl(var(--hue) 65% 56% / 0.92);
+  box-shadow: inset 0 1px 0 hsl(var(--hue) 80% 82% / 0.35);
+  opacity: 0.22;
+  /* notes may carry text (lyrics for --wave:voice tracks) */
+  font: 8px/1.75 ui-monospace, Menlo, monospace;
+  color: #000c;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.trk.live b {
+  opacity: calc(0.5 + 0.5 * var(--vel, 1));
+  pointer-events: auto;
+  cursor: grab;
+}
+.trk.live b:hover { filter: brightness(1.25); }
+.trk.live b::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  right: -3px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+/* live song-css editor (chrome) */
+#csspanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--panelw);
+  display: none;
+  flex-direction: column;
+  background: #15171d;
+  border-left: 1px solid #232733;
+  z-index: 10;
+}
+#csspanel.open { display: flex; }
+#csspanel header { flex: none; padding: 7px 10px; font-size: 11px; color: #7b8294; border-bottom: 1px solid #232733; }
+#csspanel textarea {
+  flex: 1;
+  padding: 10px;
+  background: #0e0f13;
+  color: #cfd3dc;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: auto;
+  white-space: pre;
+  tab-size: 2;
+  font: 11px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+}
+body.css-open #wrap { margin-right: var(--panelw); }
+
+/* stylesheet-only notes: give a track's ::before/::after content + grid-area
+   and the player hears it. Dashed border marks them as stylesheet creatures. */
+.trk::before, .trk::after {
+  border-radius: 3px;
+  border: 1px dashed hsl(var(--hue) 75% 75% / 0.95);
+  background: hsl(var(--hue) 65% 56% / 0.5);
+}
+
+#ph {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: #fff;
+  box-shadow: 0 0 6px #fff8;
+  z-index: 4;
+  pointer-events: none;
+  display: none;
+}
