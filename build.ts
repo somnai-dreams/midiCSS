@@ -2037,6 +2037,158 @@ const selectorSong: Song = {
 
 // ============================================================================
 
+// ============================================================================
+// BLOG EXAMPLES — tiny single-concept songs embedded by blog.html. Each is a
+// complete self-contained player; the blog shows the essence of its markup.
+// ============================================================================
+
+const ex1: Song = {
+  file: "examples/ex1-hello.html",
+  title: "hello, note",
+  bpm: 90,
+  steps: 16,
+  css: `/* no song css — the markup alone is the music */`,
+  mixer: `<span>one element, one note: grid row 24 = C4, columns 1→17 = the whole bar</span>`,
+  tracks: [{ name: "Note", wave: "sine", vol: 0.4, hue: 200, notes: [{ m: 60, s: 0, l: 16 }] }],
+};
+
+const ex2Melody: SongNote[] = [
+  { m: 60, s: 0, l: 4 }, { m: 64, s: 4, l: 4 }, { m: 67, s: 8, l: 4 }, { m: 72, s: 12, l: 4 },
+  { m: 67, s: 16, l: 4 }, { m: 64, s: 20, l: 4 }, { m: 60, s: 24, l: 8 },
+];
+const ex2: Song = {
+  file: "examples/ex2-melody.html",
+  title: "rows are pitch, columns are time",
+  bpm: 110,
+  steps: 32,
+  css: ``,
+  mixer: `<span>up = higher, right = later — that's the whole file format</span>`,
+  tracks: [{ name: "Melody", wave: "triangle", vol: 0.3, hue: 200, notes: ex2Melody }],
+};
+
+const ex3Bass: SongNote[] = [
+  { m: 48, s: 0, l: 8 }, { m: 53, s: 8, l: 8 }, { m: 55, s: 16, l: 8 }, { m: 48, s: 24, l: 8 },
+];
+const ex3: Song = {
+  file: "examples/ex3-tracks.html",
+  title: "tracks are sections, sound is properties",
+  bpm: 120,
+  steps: 32,
+  css: ``,
+  mixer: `<span>--wave, --vol, --hue, --bpm: the instrument rack is custom properties</span>`,
+  tracks: [
+    { name: "Melody", wave: "pulse25", vol: 0.2, hue: 200, synth: "--cutoff:2400", notes: ex2Melody },
+    { name: "Bass", wave: "triangle", vol: 0.3, hue: 145, notes: ex3Bass },
+  ],
+};
+
+const EX4_CSS = `
+/* the cascade is a mixing console */
+body:has(#mute-bass:checked) .trk[data-name="Bass"] { --vol: 0 !important; }
+/* geometry is pitch: 1 row = 1 semitone, so 1px = ~6 cents */
+body:has(#octave:checked) .trk[data-name="Melody"] { transform: translateY(calc(var(--rh) * -12)); }
+/* translate composes with transform — both toggles stack */
+body:has(#quarter:checked) .trk[data-name="Melody"] { translate: 0 calc(var(--rh) * -0.5); }
+`;
+const ex4: Song = {
+  file: "examples/ex4-cascade.html",
+  title: "the cascade is a mixing console",
+  bpm: 120,
+  steps: 32,
+  css: EX4_CSS,
+  mixer: `
+<label><input type="checkbox" id="mute-bass"> mute the bass (a CSS rule)</label>
+<label><input type="checkbox" id="octave"> melody +8va (transform)</label>
+<label><input type="checkbox" id="quarter"> +50 cents (translate — they stack)</label>`,
+  tracks: [
+    { name: "Melody", wave: "pulse25", vol: 0.2, hue: 200, synth: "--cutoff:2400", notes: ex2Melody },
+    { name: "Bass", wave: "triangle", vol: 0.3, hue: 145, notes: ex3Bass },
+  ],
+};
+
+const ex5Drums: SongNote[] = [];
+for (let b = 0; b < 2; b++) {
+  const o = b * 16;
+  ex5Drums.push({ m: 48, s: o, l: 1, v: 0.9 }, { m: 48, s: o + 8, l: 1, v: 0.7 });
+  ex5Drums.push({ m: 64, s: o + 4, l: 1, v: 0.8 }, { m: 64, s: o + 12, l: 1, v: 0.8 });
+  for (let i = 0; i < 16; i += 2) ex5Drums.push({ m: 81, s: o + i, l: 1, v: 0.3 });
+}
+const EX5_CSS = `
+/* the song rearranges itself by viewport — drag this embed's corner */
+@media (max-width: 560px) {
+  html { --bpm: 84 !important; }
+  .trk[data-name="Drums"] { --vol: 0 !important; }
+}
+.trk { transition: --vol 1s ease; }
+`;
+const ex5: Song = {
+  file: "examples/ex5-responsive.html",
+  title: "media queries are arrangements",
+  bpm: 126,
+  steps: 32,
+  css: EX5_CSS,
+  mixer: `<span>narrow window = slower, drumless. The remix is a media query.</span>`,
+  tracks: [
+    { name: "Melody", wave: "pulse25", vol: 0.2, hue: 200, synth: "--cutoff:2400", notes: ex2Melody },
+    { name: "Bass", wave: "triangle", vol: 0.3, hue: 145, notes: ex3Bass },
+    { name: "Drums", wave: "noise", vol: 0.4, hue: 35, notes: ex5Drums },
+  ],
+};
+
+const ex6Acid: SongNote[] = [];
+const EX6_RIFF = [36, 36, 48, 36, 39, 36, 46, 43];
+for (let i = 0; i < 16; i++) {
+  ex6Acid.push({ m: EX6_RIFF[i % 8] ?? 36, s: i * 2, l: 2, v: i % 4 === 0 ? 1 : 0.7 });
+}
+const ex6Kick: SongNote[] = [];
+for (let i = 0; i < 8; i++) ex6Kick.push({ m: 48, s: i * 4, l: 1, v: 1 });
+const EX6_CSS = `
+/* @keyframes are automation lanes: the filter never sits still */
+html.playing .trk[data-name="Acid"] { animation: sweep 3.1s ease-in-out infinite; }
+@keyframes sweep { 0%, 100% { --cutoff: 250; } 50% { --cutoff: 2600; } }
+/* every kick dips the rest of the mix — the sidechain pump is one property */
+html { --duck: 0.4; }
+/* tape: the whole song's pitch warbles (sounding notes bend live) */
+html.playing:has(#tape:checked) #roll .trk { animation: warble 11s ease-in-out infinite; }
+@keyframes warble { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(calc(var(--rh) * -0.3)); } }
+`;
+const ex6: Song = {
+  file: "examples/ex6-automation.html",
+  title: "animations are automation",
+  bpm: 130,
+  steps: 32,
+  css: EX6_CSS,
+  mixer: `<label><input type="checkbox" id="tape"> tape warble (an animated transform)</label>`,
+  tracks: [
+    { name: "Acid", wave: "sawtooth", vol: 0.25, hue: 150, synth: "--cutoff:800;--fenv:2;--attack:0.004;--release:0.1", notes: ex6Acid },
+    { name: "Kick", wave: "noise", vol: 0.35, hue: 10, synth: "--verb:0.05;--width:0", notes: ex6Kick },
+  ],
+};
+
+const EX7_CSS = `
+/* the markup has 8 EMPTY elements; this rule composes the melody */
+.trk[data-name="Formula"] b {
+  display: block;
+  grid-column: calc((sibling-index() - 1) * 2 + 1);
+  grid-row: calc(28 - mod(sibling-index() * 5, 12));
+}
+/* and these notes exist nowhere in the markup at all */
+body:has(#summon:checked) .trk[data-name="Ghost"]::before { content: ""; grid-area: 36 / 1 / 37 / 17; --vel: 0.8; }
+body:has(#summon:checked) .trk[data-name="Ghost"]::after { content: ""; grid-area: 29 / 9 / 30 / 17; --vel: 0.6; }
+`;
+const ex7: Song = {
+  file: "examples/ex7-nowhere.html",
+  title: "music from nowhere",
+  bpm: 120,
+  steps: 16,
+  css: EX7_CSS,
+  mixer: `<label><input type="checkbox" id="summon"> summon two notes that aren't in the markup</label>`,
+  tracks: [
+    { name: "Formula", wave: "triangle", vol: 0.3, hue: 150, blanks: 8, notes: [] },
+    { name: "Ghost", wave: "sine", vol: 0.25, hue: 280, notes: [] },
+  ],
+};
+
 const css = await Bun.file("src/style.css").text();
 const ts = await Bun.file("src/daw.ts").text();
 const tpl = await Bun.file("src/template.html").text();
@@ -2051,7 +2203,7 @@ const sonifyJs =
 await Bun.write("sonify.js", sonifyJs);
 console.log(`sonify.js — ${(sonifyJs.length / 1024).toFixed(1)} kB`);
 
-for (const song of [demo, bloom, ratio, blue, bloom31, mass, hammers, hammersX, pump, selectorSong]) {
+for (const song of [demo, bloom, ratio, blue, bloom31, mass, hammers, hammersX, pump, selectorSong, ex1, ex2, ex3, ex4, ex5, ex6, ex7]) {
   const out = tpl
     .replace("__TITLE__", () => song.title)
     .replace("__BPM__", () => String(song.bpm))
