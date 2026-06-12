@@ -1525,6 +1525,150 @@ const hammersX: Song = {
 };
 
 // ============================================================================
+// Offline drum DSP — one-shots rendered at build time with proper filtering
+// and envelopes (quality the realtime engine can't afford per note), baked
+// into songs as data: URIs via --wave: url(...). Deterministic (LCG noise),
+// so builds and diffs stay stable.
+// ============================================================================
+
+const SR = 44100;
+
+const lcg = (seed: number): (() => number) => {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return (s / 4294967296) * 2 - 1;
+  };
+};
+
+// RBJ biquad over a whole buffer
+const biquad = (x: Float32Array, type: "lowpass" | "highpass" | "bandpass", f0: number, q: number): Float32Array => {
+  const w0 = (2 * Math.PI * f0) / SR;
+  const alpha = Math.sin(w0) / (2 * q);
+  const cosw = Math.cos(w0);
+  let b0: number;
+  let b1: number;
+  let b2: number;
+  if (type === "lowpass") {
+    b0 = (1 - cosw) / 2;
+    b1 = 1 - cosw;
+    b2 = (1 - cosw) / 2;
+  } else if (type === "highpass") {
+    b0 = (1 + cosw) / 2;
+    b1 = -(1 + cosw);
+    b2 = (1 + cosw) / 2;
+  } else {
+    b0 = alpha;
+    b1 = 0;
+    b2 = -alpha;
+  }
+  const a0 = 1 + alpha;
+  const a1 = -2 * cosw;
+  const a2 = 1 - alpha;
+  const y = new Float32Array(x.length);
+  let x1 = 0;
+  let x2 = 0;
+  let y1 = 0;
+  let y2 = 0;
+  for (let i = 0; i < x.length; i++) {
+    const xi = x[i] ?? 0;
+    const yi = (b0 / a0) * xi + (b1 / a0) * x1 + (b2 / a0) * x2 - (a1 / a0) * y1 - (a2 / a0) * y2;
+    x2 = x1;
+    x1 = xi;
+    y2 = y1;
+    y1 = yi;
+    y[i] = yi;
+  }
+  return y;
+};
+
+const wavDataUri = (samples: Float32Array): string => {
+  const n = samples.length;
+  const buf = Buffer.alloc(44 + n * 2);
+  buf.write("RIFF", 0);
+  buf.writeUInt32LE(36 + n * 2, 4);
+  buf.write("WAVE", 8);
+  buf.write("fmt ", 12);
+  buf.writeUInt32LE(16, 16);
+  buf.writeUInt16LE(1, 20);
+  buf.writeUInt16LE(1, 22);
+  buf.writeUInt32LE(SR, 24);
+  buf.writeUInt32LE(SR * 2, 28);
+  buf.writeUInt16LE(2, 32);
+  buf.writeUInt16LE(16, 34);
+  buf.write("data", 36);
+  buf.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++) {
+    const v = Math.max(-1, Math.min(1, samples[i] ?? 0));
+    buf.writeInt16LE(Math.round(v * 32767), 44 + i * 2);
+  }
+  return "data:audio/wav;base64," + buf.toString("base64");
+};
+
+const renderKick = (): Float32Array => {
+  const n = Math.floor(SR * 0.42);
+  const out = new Float32Array(n);
+  const rnd = lcg(7);
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const f = 48 + 145 * Math.exp(-t / 0.04); // 193Hz sweeping to 48Hz
+    phase += (2 * Math.PI * f) / SR;
+    let s = Math.sin(phase) * Math.exp(-t / 0.13);
+    s = Math.tanh(s * 2.4) / Math.tanh(2.4);
+    if (t < 0.004) s += rnd() * 0.5 * (1 - t / 0.004); // click transient
+    out[i] = s * 0.95;
+  }
+  return out;
+};
+
+const renderClap = (): Float32Array => {
+  const n = Math.floor(SR * 0.33);
+  const rnd = lcg(57);
+  const raw = new Float32Array(n);
+  for (let i = 0; i < n; i++) raw[i] = rnd();
+  const filt = biquad(biquad(raw, "bandpass", 1250, 1.0), "highpass", 600, 0.7);
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    let env = 0;
+    for (const b of [0, 0.011, 0.021, 0.031]) {
+      if (t >= b) env = Math.max(env, Math.exp(-(t - b) / 0.0075));
+    }
+    if (t >= 0.031) env = Math.max(env, Math.exp(-(t - 0.031) / 0.075) * 0.85);
+    out[i] = Math.tanh((filt[i] ?? 0) * env * 2.6);
+  }
+  return out;
+};
+
+const renderHat = (open: boolean): Float32Array => {
+  const n = Math.floor(SR * (open ? 0.4 : 0.1));
+  const raw = new Float32Array(n);
+  const freqs = [205.3, 304.4, 369.6, 522.7, 540, 800]; // the 808 oscillator bank
+  const rnd = lcg(open ? 31 : 17);
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    let m = 0;
+    for (const f of freqs) m += Math.sign(Math.sin(2 * Math.PI * f * 8.04 * t));
+    raw[i] = (m / 6) * 0.9 + rnd() * 0.45;
+  }
+  const hp = biquad(biquad(raw, "highpass", 6800, 0.8), "highpass", 8200, 0.7);
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    out[i] = Math.tanh((hp[i] ?? 0) * Math.exp(-t / (open ? 0.11 : 0.022)) * 2.4);
+  }
+  return out;
+};
+
+const KIT = {
+  kick: wavDataUri(renderKick()),
+  clap: wavDataUri(renderClap()),
+  hatC: wavDataUri(renderHat(false)),
+  hatO: wavDataUri(renderHat(true)),
+};
+
+// ============================================================================
 // PUMP — filter house. 124bpm, four-on-the-floor, C minor (Cm7 Abmaj7 Ebmaj7
 // Bb7, two bars each) with just-intonation voicings (m3 +16c, M3 -14c, and a
 // septimal 7th on the Bb7). The genre signatures, all CSS-native: --duck 0.45
@@ -1553,12 +1697,13 @@ for (let b = 0; b < 8; b++) {
   for (const k of [0, 4, 8, 12]) pumpKick.push({ m: 40, s: b * 16 + k, l: 1, v: 1 });
 }
 
-const pumpHats: SongNote[] = [];
+const pumpHatsC: SongNote[] = [];
+const pumpHatsO: SongNote[] = [];
 for (let b = 0; b < 8; b++) {
   const o = b * 16;
   for (let i = 0; i < 16; i++) {
-    if (i % 4 === 2) pumpHats.push({ m: 77, s: o + i, l: 1, v: 0.3 }); // open on the offbeats
-    else pumpHats.push({ m: 81, s: o + i + (i % 2 === 1 ? 0.22 : 0), l: 1, v: 0.09 + scat(b * 16 + i, 0.03) + (i % 4 === 0 ? 0.06 : 0) });
+    if (i % 4 === 2) pumpHatsO.push({ m: 77, s: o + i, l: 1, v: 0.8 }); // open on the offbeats
+    else pumpHatsC.push({ m: 81, s: o + i + (i % 2 === 1 ? 0.22 : 0), l: 1, v: 0.35 + scat(b * 16 + i, 0.12) + (i % 4 === 0 ? 0.18 : 0) });
   }
 }
 
@@ -1666,7 +1811,7 @@ body:has(#mute-pad:checked)   .trk[data-name="Pad"]   { --vol: 0 !important; fil
 body:has(#mute-body:checked)  .trk[data-name="Body"]  { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
 body:has(#mute-bass:checked)  .trk[data-name="Bass"]  { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
 body:has(#mute-kick:checked)  .trk[data-name="Kick"]  { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
-body:has(#mute-hats:checked)  .trk[data-name="Hats"]  { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
+body:has(#mute-hats:checked)  :is(.trk[data-name="Hats"], .trk[data-name="Open"]) { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
 body:has(#mute-clap:checked)  .trk[data-name="Clap"]  { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
 body:has(#mute-vox:checked)   .trk[data-name="Vox"]   { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
 
@@ -1762,9 +1907,10 @@ const pump: Song = {
     { name: "Pad", wave: "organ", vol: 0.04, hue: 100, synth: "--attack:0.4;--release:0.7;--verb:0.5;--vibrato:6;--width:0.6", notes: pumpPad },
     { name: "Body", wave: "brass", vol: 0.04, hue: 20, synth: "--cutoff:900;--attack:0.005;--release:0.2;--verb:0.25;--width:0.25", notes: pumpBody },
     { name: "Bass", wave: "triangle", vol: 0.4, hue: 145, synth: "--cutoff:750;--fenv:1.6;--attack:0.004;--release:0.08;--verb:0.04;--width:0", notes: pumpBass },
-    { name: "Kick", wave: "noise", vol: 0.55, hue: 10, synth: "--verb:0.03;--width:0", notes: pumpKick },
-    { name: "Hats", wave: "noise", vol: 0.26, hue: 60, synth: "--verb:0.15;--pan:0.15", notes: pumpHats },
-    { name: "Clap", wave: "clap", vol: 0.5, hue: 40, synth: "--verb:0.35", notes: pumpClap },
+    { name: "Kick", wave: `url('${KIT.kick}')`, vol: 0.5, hue: 10, synth: "--verb:0.03;--width:0;--root:40;--sidechain:1", notes: pumpKick },
+    { name: "Hats", wave: `url('${KIT.hatC}')`, vol: 0.28, hue: 60, synth: "--verb:0.12;--pan:0.15;--root:81", notes: pumpHatsC },
+    { name: "Open", wave: `url('${KIT.hatO}')`, vol: 0.26, hue: 65, synth: "--verb:0.18;--pan:0.2;--root:77", notes: pumpHatsO },
+    { name: "Clap", wave: `url('${KIT.clap}')`, vol: 0.45, hue: 40, synth: "--verb:0.35;--root:64", notes: pumpClap },
     { name: "Vox", wave: "voice", vol: 0.35, hue: 0, notes: pumpVox },
   ],
 };

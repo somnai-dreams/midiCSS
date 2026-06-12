@@ -304,6 +304,21 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
     return engine;
   };
 
+  // Samples: --wave: url(...) makes a track play an audio file (data: URIs
+  // keep songs self-contained), pitched by row relative to --root. Decoding
+  // happens off the audio path; unready notes are skipped, not queued.
+  const sampleCache = new Map<string, AudioBuffer | null>();
+  const urlOf = (w: string): string => w.replace(/^url\((['"]?)([\s\S]*?)\1\)$/, "$2");
+  const loadSample = (url: string): void => {
+    if (sampleCache.has(url)) return;
+    sampleCache.set(url, null);
+    fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((ab) => new OfflineAudioContext(1, 1, 44100).decodeAudioData(ab))
+      .then((buf) => sampleCache.set(url, buf))
+      .catch(() => sampleCache.delete(url));
+  };
+
   // Synth params are CSS custom properties on the track (all registered, so
   // all animatable): --spread = unison detune in cents (two oscillators),
   // --cutoff = lowpass Hz (0 = off), --attack/--release = envelope seconds.
@@ -350,9 +365,10 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
       1,
     );
     lvl.connect(pan);
-    // kicks bypass the duck bus (they're the ones doing the ducking)
+    // kicks bypass the duck bus (they're the ones doing the ducking);
+    // sample tracks opt in with --sidechain: 1
     const { duck } = audio();
-    const kickish = wave === "noise" && nb.midi < 50;
+    const kickish = (wave === "noise" && nb.midi < 50) || cssNum(trk, "--sidechain", 0) > 0;
     pan.connect(kickish ? out : duck);
     const { verb, echo } = audio();
     const vAmt = cssNum(trk, "--verb", 0.15);
@@ -368,6 +384,41 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
       es.gain.value = eAmt;
       pan.connect(es);
       es.connect(echo);
+    }
+    if (wave.startsWith("url(")) {
+      const url = urlOf(wave);
+      const buf = sampleCache.get(url);
+      if (buf === undefined) {
+        loadSample(url);
+        return;
+      }
+      if (buf === null) return; // still decoding — skip, the next pass catches it
+      if (kickish) {
+        const depth = clamp(cssNum(docEl, "--duck", 0), 0, 0.9);
+        if (depth > 0) {
+          duck.gain.setTargetAtTime(1 - depth, when, 0.012);
+          duck.gain.setTargetAtTime(1, when + 0.07, 0.09);
+        }
+      }
+      lvl.gain.value = vol;
+      let dest: AudioNode = env;
+      if (cutoff > 0) {
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = clamp(cutoff, 40, 18000);
+        lp.connect(env);
+        dest = lp;
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      // pitched by row relative to --root, with ±2% per-hit variance
+      src.playbackRate.value =
+        Math.pow(2, (nb.midi - cssNum(trk, "--root", 60)) / 12) * (0.98 + ((when * 73) % 0.04));
+      src.connect(dest);
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(1, when + 0.001);
+      src.start(when);
+      return;
     }
     if (wave === "clap") {
       // 909-style clap: three fast noise bursts, then the body
@@ -954,5 +1005,10 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
 
   // ---- boot ----------------------------------------------------------------
   setLive(live);
+  // pre-decode any sample tracks so the first pass doesn't miss hits
+  for (const trk of tracks()) {
+    const w = cssStr(trk, "--wave");
+    if (w.startsWith("url(")) loadSample(urlOf(w));
+  }
   wrap.scrollTop = Math.max(0, 28 * rowH() - wrap.clientHeight / 2);
 }

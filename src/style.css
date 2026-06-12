@@ -15,6 +15,8 @@
 @property --loop { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --duck { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --form { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --root { syntax: "<number>"; inherits: true; initial-value: 60; }
+@property --sidechain { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --pan { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --width { syntax: "<number>"; inherits: true; initial-value: 0.3; }
 @property --verb { syntax: "<number>"; inherits: true; initial-value: 0.15; }

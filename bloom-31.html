@@ -22,6 +22,8 @@
 @property --loop { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --duck { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --form { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --root { syntax: "<number>"; inherits: true; initial-value: 60; }
+@property --sidechain { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --pan { syntax: "<number>"; inherits: true; initial-value: 0; }
 @property --width { syntax: "<number>"; inherits: true; initial-value: 0.3; }
 @property --verb { syntax: "<number>"; inherits: true; initial-value: 0.15; }
@@ -939,6 +941,14 @@ function init(roll, wrap) {
     engine = { ctx, out, duck, verb, echo, echoDelay, echoDelay2, noise, kickCurve, waves };
     return engine;
   };
+  const sampleCache = new Map;
+  const urlOf = (w) => w.replace(/^url\((['"]?)([\s\S]*?)\1\)$/, "$2");
+  const loadSample = (url) => {
+    if (sampleCache.has(url))
+      return;
+    sampleCache.set(url, null);
+    fetch(url).then((r) => r.arrayBuffer()).then((ab) => new OfflineAudioContext(1, 1, 44100).decodeAudioData(ab)).then((buf) => sampleCache.set(url, buf)).catch(() => sampleCache.delete(url));
+  };
   let voices = [];
   const playNote = (trk, nb, when, dur) => {
     const { ctx, out, noise } = audio();
@@ -973,7 +983,7 @@ function init(roll, wrap) {
     pan.pan.value = clamp(cssNum(trk, "--pan", 0) + (nb.midi - 64) / 64 * cssNum(trk, "--width", 0.3), -1, 1);
     lvl.connect(pan);
     const { duck } = audio();
-    const kickish = wave === "noise" && nb.midi < 50;
+    const kickish = wave === "noise" && nb.midi < 50 || cssNum(trk, "--sidechain", 0) > 0;
     pan.connect(kickish ? out : duck);
     const { verb, echo } = audio();
     const vAmt = cssNum(trk, "--verb", 0.15);
@@ -989,6 +999,40 @@ function init(roll, wrap) {
       es.gain.value = eAmt;
       pan.connect(es);
       es.connect(echo);
+    }
+    if (wave.startsWith("url(")) {
+      const url = urlOf(wave);
+      const buf = sampleCache.get(url);
+      if (buf === undefined) {
+        loadSample(url);
+        return;
+      }
+      if (buf === null)
+        return;
+      if (kickish) {
+        const depth = clamp(cssNum(docEl, "--duck", 0), 0, 0.9);
+        if (depth > 0) {
+          duck.gain.setTargetAtTime(1 - depth, when, 0.012);
+          duck.gain.setTargetAtTime(1, when + 0.07, 0.09);
+        }
+      }
+      lvl.gain.value = vol;
+      let dest = env;
+      if (cutoff > 0) {
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = clamp(cutoff, 40, 18000);
+        lp.connect(env);
+        dest = lp;
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = Math.pow(2, (nb.midi - cssNum(trk, "--root", 60)) / 12) * (0.98 + when * 73 % 0.04);
+      src.connect(dest);
+      env.gain.setValueAtTime(0, when);
+      env.gain.linearRampToValueAtTime(1, when + 0.001);
+      src.start(when);
+      return;
     }
     if (wave === "clap") {
       lvl.gain.value = vol;
@@ -1529,6 +1573,11 @@ function init(roll, wrap) {
     URL.revokeObjectURL(a.href);
   }
   setLive(live);
+  for (const trk of tracks()) {
+    const w = cssStr(trk, "--wave");
+    if (w.startsWith("url("))
+      loadSample(urlOf(w));
+  }
   wrap.scrollTop = Math.max(0, 28 * rowH() - wrap.clientHeight / 2);
 }
 </script>
