@@ -110,6 +110,13 @@ a:hover { text-decoration-color: hsl(var(--a, 250) 70% 74%); }
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 .rail-frame.narrow { max-width: 360px; }
+/* chapter 5: the frame breathes open and closed so the media query inside
+   audibly flips on every cycle */
+.rail-frame.cycling { animation: openclose 9s ease-in-out infinite; }
+@keyframes openclose {
+  0%, 100% { max-width: 560px; }
+  50% { max-width: 360px; }
+}
 .rail-frame iframe {
   width: 100%;
   height: 470px;
@@ -207,7 +214,7 @@ body:has(#quarter:checked) .trk[data-name="Melody"] { translate: 0 calc(var(--rh
 
 <section class="ch" data-stage="4" style="--a:120">
 <h2 data-n="05">media queries are arrangements</h2>
-<p>If the mix is CSS, the song can respond to anything CSS can see — including the width of its own window. Watch the player: while you read this chapter, the page <strong>narrows the frame</strong>, the media query inside flips, and the drums dissolve while the tempo settles. Scroll on and it widens back into the full groove. The same file is a different arrangement on a phone.</p>
+<p>If the mix is CSS, the song can respond to anything CSS can see — including the width of its own window. Watch the player: while you read this chapter the page <strong>breathes the frame open and closed</strong>, and every time it narrows past the breakpoint the media query flips — drums cut, tempo drops — then the groove returns as it widens. The same file is a different arrangement on a phone.</p>
 <pre>@media (max-width: 480px) {
   html { --bpm: 84 !important; }
   .trk[data-name="Drums"] { --vol: 0 !important; }
@@ -283,7 +290,7 @@ const apply = (i) => {
   sections.forEach((s, j) => s.classList.toggle("active", j === i));
   stageno.textContent = String(i + 1).padStart(2, "0");
   stagename.textContent = STAGES[i].title;
-  railframe.classList.toggle("narrow", i === 4);
+  railframe.classList.toggle("cycling", i === 4);
   send(i);
 };
 
@@ -313,11 +320,15 @@ const pick = () => {
 };
 const io = new IntersectionObserver(pick, { rootMargin: "-35% 0px -55% 0px" });
 sections.forEach((s) => io.observe(s));
-let raf = 0;
+let pending = 0;
 window.addEventListener("scroll", () => {
-  if (raf) return;
-  raf = requestAnimationFrame(() => { raf = 0; pick(); });
+  if (pending) return;
+  pending = window.setTimeout(() => { pending = 0; pick(); }, 80);
 }, { passive: true });
+// heartbeat: IO, rAF and even scroll events can all stall in throttled or
+// hidden renderers; pick() is seven rect reads, so a slow poll guarantees
+// the active chapter is always right regardless of how we got there.
+window.setInterval(pick, 400);
 pick(); // initial state, including restored scroll positions
 try {
   // cached iframes can finish before this script runs and never fire load

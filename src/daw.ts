@@ -1090,7 +1090,12 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
       if (typeof m.css === "string") songCss.textContent = m.css;
       if (typeof m.mixer === "string") {
         const mx = document.querySelector("#mixer");
-        if (mx) mx.innerHTML = m.mixer;
+        if (mx instanceof HTMLElement) {
+          mx.innerHTML = m.mixer;
+          mx.classList.remove("fresh");
+          void mx.offsetWidth; // restart the attention flash
+          mx.classList.add("fresh");
+        }
       }
       if (typeof m.song === "string") {
         for (const t of [...roll.querySelectorAll(".trk")]) t.remove();

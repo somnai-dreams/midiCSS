@@ -2115,12 +2115,11 @@ for (let b = 0; b < 2; b++) {
 }
 const EX5_CSS = `
 /* the song rearranges itself by viewport — narrow the window (or let the
-   blog narrow this frame) and the drums dissolve while the tempo settles */
+   blog breathe this frame) and the drums cut while the tempo settles */
 @media (max-width: 480px) {
   html { --bpm: 84 !important; }
   .trk[data-name="Drums"] { --vol: 0 !important; }
 }
-.trk { transition: --vol 1s ease; }
 `;
 const ex5: Song = {
   file: "examples/ex5-responsive.html",

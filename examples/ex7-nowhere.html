@@ -219,6 +219,47 @@ html.embed #play {
 html.embed #play.on { background: #3d52d5; }
 html.embed .hint { display: none; }
 
+/* embed mixer: song toggles promoted to obvious pill controls */
+html.embed #mixer {
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #aab1c2;
+  background: rgba(94, 114, 238, 0.07);
+  border-bottom: 1px solid rgba(94, 114, 238, 0.16);
+}
+html.embed #mixer span { font-style: italic; color: #8d93a5; padding: 6px 2px; }
+html.embed #mixer label {
+  padding: 8px 14px;
+  border-radius: 17px;
+  background: #232733;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  color: #cfd3dc;
+  transition: background 0.15s ease, scale 0.15s cubic-bezier(0.2, 0, 0, 1);
+}
+html.embed #mixer label::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  transition: background 0.15s ease;
+}
+html.embed #mixer label:active { scale: 0.96; }
+html.embed #mixer label:has(input:checked) {
+  background: #3d52d5;
+  color: #fff;
+  box-shadow: none;
+}
+html.embed #mixer label:has(input:checked)::before { background: #fff; }
+html.embed #mixer input { position: absolute; opacity: 0; pointer-events: none; }
+/* attention flash when a chapter swaps new controls in */
+html.embed #mixer.fresh { animation: mixfresh 1.4s ease-out 1; }
+@keyframes mixfresh {
+  0% { background: rgba(94, 114, 238, 0.3); }
+  100% { background: rgba(94, 114, 238, 0.07); }
+}
+
 /* live song-css editor (chrome) */
 #csspanel {
   position: fixed;
@@ -1249,8 +1290,12 @@ function init(roll, wrap) {
         songCss.textContent = m.css;
       if (typeof m.mixer === "string") {
         const mx = document.querySelector("#mixer");
-        if (mx)
+        if (mx instanceof HTMLElement) {
           mx.innerHTML = m.mixer;
+          mx.classList.remove("fresh");
+          mx.offsetWidth;
+          mx.classList.add("fresh");
+        }
       }
       if (typeof m.song === "string") {
         for (const t of [...roll.querySelectorAll(".trk")])
