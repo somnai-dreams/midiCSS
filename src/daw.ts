@@ -383,7 +383,7 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
       }
       env.gain.setValueAtTime(0.8, when + 0.03);
       env.gain.exponentialRampToValueAtTime(0.004, when + 0.2);
-      src.start(when);
+      src.start(when, (when * 6.31) % 0.9); // per-hit noise variance
       src.stop(when + 0.25);
     } else if (wave === "noise") {
       // drums chosen by register: <50 kick, 50-62 tom (pitched), 63-75 snare,
@@ -417,22 +417,39 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
         env.gain.exponentialRampToValueAtTime(0.004, when + 0.3);
         osc.start(when);
         osc.stop(when + 0.35);
-        click.start(when);
+        click.start(when, (when * 3.31) % 0.9); // per-hit click variance
         click.stop(when + 0.04);
       } else if (nb.midi >= 76) {
-        // metallic hats: six detuned square partials, highpassed (808 recipe)
-        const decay = nb.midi >= 80 ? 0.05 : 0.25;
+        // hats: noise sizzle over a small metallic stack pushed above the
+        // cowbell zone. Per-hit variance — buffer offset, partial detune,
+        // decay and brightness all derive from the schedule time, so no two
+        // hits are identical.
+        const decay = (nb.midi >= 80 ? 0.05 : 0.25) * (0.85 + ((when * 131) % 0.3));
         lvl.gain.value = vol * 0.7;
         const hp = ctx.createBiquadFilter();
         hp.type = "highpass";
-        hp.frequency.value = clamp(freq * 5.5, 3000, 12000);
+        hp.frequency.value = clamp(freq * 5.5, 3000, 12000) * (0.8 + 0.4 * Math.min(nb.vel, 1));
         hp.connect(env);
-        const base = clamp(freq * 1.4, 250, 900);
+        const src = ctx.createBufferSource();
+        src.buffer = noise;
+        src.loop = true;
+        const ng = ctx.createGain();
+        ng.gain.value = 0.85;
+        src.connect(ng);
+        ng.connect(hp);
+        src.start(when, (when * 7.13) % 0.9);
+        src.stop(when + decay + 0.05);
+        const mg = ctx.createGain();
+        mg.gain.value = 0.4;
+        mg.connect(hp);
+        const base = clamp(freq * 2.2, 600, 2200);
+        const detuneSeed = ((when * 997) % 60) - 30;
         for (const r of [1, 1.2312, 1.342, 1.6532, 1.9523, 2.1523]) {
           const o = ctx.createOscillator();
           o.type = "square";
           o.frequency.value = base * r * 2;
-          o.connect(hp);
+          o.detune.value = detuneSeed * r;
+          o.connect(mg);
           o.start(when);
           o.stop(when + decay + 0.05);
         }
@@ -485,7 +502,7 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
         env.gain.setValueAtTime(0, when);
         env.gain.linearRampToValueAtTime(1, when + 0.003);
         env.gain.exponentialRampToValueAtTime(0.004, when + decay);
-        src.start(when);
+        src.start(when, (when * 5.07) % 0.9); // per-hit noise variance
         src.stop(when + decay + 0.05);
       }
     } else {
