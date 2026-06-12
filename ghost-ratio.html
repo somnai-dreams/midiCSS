@@ -692,11 +692,20 @@ function init(roll, wrap) {
   };
   const sampleCache = new Map;
   const urlOf = (w) => w.replace(/^url\((['"]?)([\s\S]*?)\1\)$/, "$2");
-  const loadSample = (url) => {
-    if (sampleCache.has(url))
+  const loadSample = (waveStr) => {
+    if (sampleCache.has(waveStr))
       return;
-    sampleCache.set(url, null);
-    fetch(url).then((r) => r.arrayBuffer()).then((ab) => new OfflineAudioContext(1, 1, 44100).decodeAudioData(ab)).then((buf) => sampleCache.set(url, buf)).catch(() => sampleCache.delete(url));
+    sampleCache.set(waveStr, null);
+    fetch(urlOf(waveStr)).then((r) => r.arrayBuffer()).then((ab) => new OfflineAudioContext(1, 1, 44100).decodeAudioData(ab)).then((buf) => sampleCache.set(waveStr, buf)).catch(() => sampleCache.delete(waveStr));
+  };
+  const waveCache = new WeakMap;
+  const waveOf = (trk) => {
+    const hit = waveCache.get(trk);
+    if (hit !== undefined && hit.gen === cacheGen)
+      return hit.wave;
+    const wave = cssStr(trk, "--wave");
+    waveCache.set(trk, { gen: cacheGen, wave });
+    return wave;
   };
   let voices = [];
   const playNote = (trk, nb, when, dur) => {
@@ -704,7 +713,7 @@ function init(roll, wrap) {
     const vol = cssNum(trk, "--vol", 0.3) * nb.vel;
     if (vol <= 0)
       return;
-    const wave = cssStr(trk, "--wave");
+    const wave = waveOf(trk);
     if (wave === "voice") {
       if (typeof speechSynthesis === "undefined")
         return;
@@ -750,10 +759,9 @@ function init(roll, wrap) {
       es.connect(echo);
     }
     if (wave.startsWith("url(")) {
-      const url = urlOf(wave);
-      const buf = sampleCache.get(url);
+      const buf = sampleCache.get(wave);
       if (buf === undefined) {
-        loadSample(url);
+        loadSample(wave);
         return;
       }
       if (buf === null)
@@ -1189,8 +1197,10 @@ function init(roll, wrap) {
     requestAnimationFrame(frame);
   }
   function play() {
-    const { ctx } = audio();
+    const { ctx, duck } = audio();
     ctx.resume();
+    duck.gain.cancelScheduledValues(0);
+    duck.gain.setValueAtTime(1, ctx.currentTime);
     playing = true;
     startAt = ctx.currentTime + 0.06;
     nextStep = 0;
@@ -1325,7 +1335,7 @@ function init(roll, wrap) {
   for (const trk of tracks()) {
     const w = cssStr(trk, "--wave");
     if (w.startsWith("url("))
-      loadSample(urlOf(w));
+      loadSample(w);
   }
   wrap.scrollTop = Math.max(0, 28 * rowH() - wrap.clientHeight / 2);
 }

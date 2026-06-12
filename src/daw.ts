@@ -307,16 +307,29 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
   // Samples: --wave: url(...) makes a track play an audio file (data: URIs
   // keep songs self-contained), pitched by row relative to --root. Decoding
   // happens off the audio path; unready notes are skipped, not queued.
+  // keyed by the full url(...) wave string so hot paths never re-parse it
   const sampleCache = new Map<string, AudioBuffer | null>();
   const urlOf = (w: string): string => w.replace(/^url\((['"]?)([\s\S]*?)\1\)$/, "$2");
-  const loadSample = (url: string): void => {
-    if (sampleCache.has(url)) return;
-    sampleCache.set(url, null);
-    fetch(url)
+  const loadSample = (waveStr: string): void => {
+    if (sampleCache.has(waveStr)) return;
+    sampleCache.set(waveStr, null);
+    fetch(urlOf(waveStr))
       .then((r) => r.arrayBuffer())
       .then((ab) => new OfflineAudioContext(1, 1, 44100).decodeAudioData(ab))
-      .then((buf) => sampleCache.set(url, buf))
-      .catch(() => sampleCache.delete(url));
+      .then((buf) => sampleCache.set(waveStr, buf))
+      .catch(() => sampleCache.delete(waveStr));
+  };
+
+  // --wave can be a 70KB data URI; reading it from computed style per note
+  // is megabytes/sec of string garbage. One read per track per cache
+  // generation instead.
+  const waveCache = new WeakMap<HTMLElement, { gen: number; wave: string }>();
+  const waveOf = (trk: HTMLElement): string => {
+    const hit = waveCache.get(trk);
+    if (hit !== undefined && hit.gen === cacheGen) return hit.wave;
+    const wave = cssStr(trk, "--wave");
+    waveCache.set(trk, { gen: cacheGen, wave });
+    return wave;
   };
 
   // Synth params are CSS custom properties on the track (all registered, so
@@ -333,7 +346,7 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
     const { ctx, out, noise } = audio();
     const vol = cssNum(trk, "--vol", 0.3) * nb.vel;
     if (vol <= 0) return;
-    const wave = cssStr(trk, "--wave");
+    const wave = waveOf(trk);
     if (wave === "voice") {
       if (typeof speechSynthesis === "undefined") return;
       const text = nb.el === null ? "" : (nb.el.textContent ?? "").trim();
@@ -386,10 +399,9 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
       es.connect(echo);
     }
     if (wave.startsWith("url(")) {
-      const url = urlOf(wave);
-      const buf = sampleCache.get(url);
+      const buf = sampleCache.get(wave);
       if (buf === undefined) {
-        loadSample(url);
+        loadSample(wave);
         return;
       }
       if (buf === null) return; // still decoding — skip, the next pass catches it
@@ -875,8 +887,11 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
   }
 
   function play(): void {
-    const { ctx } = audio();
+    const { ctx, duck } = audio();
     void ctx.resume();
+    // clear accumulated sidechain automation from previous plays
+    duck.gain.cancelScheduledValues(0);
+    duck.gain.setValueAtTime(1, ctx.currentTime);
     playing = true;
     startAt = ctx.currentTime + 0.06;
     nextStep = 0;
@@ -1008,7 +1023,7 @@ function init(roll: HTMLElement, wrap: HTMLElement): void {
   // pre-decode any sample tracks so the first pass doesn't miss hits
   for (const trk of tracks()) {
     const w = cssStr(trk, "--wave");
-    if (w.startsWith("url(")) loadSample(urlOf(w));
+    if (w.startsWith("url(")) loadSample(w);
   }
   wrap.scrollTop = Math.max(0, 28 * rowH() - wrap.clientHeight / 2);
 }
