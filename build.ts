@@ -1557,8 +1557,8 @@ const pumpHats: SongNote[] = [];
 for (let b = 0; b < 8; b++) {
   const o = b * 16;
   for (let i = 0; i < 16; i++) {
-    if (i % 4 === 2) pumpHats.push({ m: 77, s: o + i, l: 1, v: 0.38 }); // open on the offbeats
-    else pumpHats.push({ m: 81, s: o + i + (i % 2 === 1 ? 0.12 : 0), l: 1, v: 0.12 + scat(b * 16 + i, 0.04) + (i % 4 === 0 ? 0.08 : 0) });
+    if (i % 4 === 2) pumpHats.push({ m: 77, s: o + i, l: 1, v: 0.3 }); // open on the offbeats
+    else pumpHats.push({ m: 81, s: o + i + (i % 2 === 1 ? 0.22 : 0), l: 1, v: 0.09 + scat(b * 16 + i, 0.03) + (i % 4 === 0 ? 0.06 : 0) });
   }
 }
 
@@ -1620,7 +1620,7 @@ const pumpArp: SongNote[] = [];
 for (let i = 0; i < 128; i++) {
   const chord = PUMP_STABS[pumpChord(Math.floor(i / 16))] ?? [];
   const tone = (chord[i % 4] ?? 48) + (i % 8 >= 4 ? 12 : 0);
-  pumpArp.push({ m: tone + scat(i * 7, 0.06), s: i + scat(i * 3, 0.03), l: 1, v: i % 4 === 0 ? 0.7 : 0.4 });
+  pumpArp.push({ m: tone + scat(i * 7, 0.06), s: i + (i % 2 === 1 ? 0.18 : 0) + scat(i * 3, 0.03), l: 1, v: i % 4 === 0 ? 0.7 : 0.4 });
 }
 
 // glue: overlapping chord tones with detuned twins, entries every half bar
@@ -1640,9 +1640,25 @@ const pumpVox: SongNote[] = [
   { m: 51, s: 126, l: 2, v: 1, w: "cascade" },
 ];
 
+// the hook: a dark brass topline in C blues — quarter-tone blue note (66.5),
+// JI minor thirds, and a turnaround landing on Bb7's septimal seventh
+const pumpHook: SongNote[] = [
+  { m: 67, s: 0, l: 2.67, v: 0.95 }, { m: 66.5, s: 2.67, l: 1.33, v: 0.85 }, { m: 63.16, s: 4, l: 3, v: 0.9 },
+  { m: 60, s: 8, l: 4, v: 0.85 },
+  { m: 63.16, s: 18, l: 2, v: 0.8 }, { m: 65, s: 20.67, l: 1.33, v: 0.8 }, { m: 67, s: 22, l: 4, v: 0.9 },
+  { m: 70.18, s: 32, l: 2.67, v: 0.9 }, { m: 67, s: 34.67, l: 1.33, v: 0.8 }, { m: 63.16, s: 36, l: 3, v: 0.85 },
+  { m: 60, s: 40, l: 4, v: 0.8 }, { m: 58, s: 50, l: 2, v: 0.75 }, { m: 60, s: 52.67, l: 3, v: 0.85 },
+  { m: 63.16, s: 64, l: 2.67, v: 0.85 }, { m: 65, s: 66.67, l: 1.33, v: 0.8 }, { m: 66.5, s: 68, l: 2, v: 0.95 },
+  { m: 67, s: 70, l: 5, v: 0.9 }, { m: 63.16, s: 82, l: 2, v: 0.75 }, { m: 60, s: 84, l: 4, v: 0.8 },
+  { m: 65, s: 96, l: 2.67, v: 0.85 }, { m: 63.16, s: 98.67, l: 1.33, v: 0.8 }, { m: 60, s: 100, l: 3, v: 0.8 },
+  { m: 55.69, s: 108, l: 3, v: 0.85 }, { m: 58, s: 112, l: 2, v: 0.8 }, { m: 60, s: 114.67, l: 1.33, v: 0.8 },
+  { m: 63.16, s: 116, l: 2, v: 0.85 }, { m: 67, s: 118, l: 6, v: 0.95 },
+];
+
 const PUMP_CSS = `
 /* ========== PUMP — arrangement (edit live via { } css) ========== */
 
+body:has(#mute-hook:checked)  .trk[data-name="Hook"]  { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
 body:has(#mute-stabs:checked) .trk[data-name="Stabs"] { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
 body:has(#mute-riff:checked)  .trk[data-name="Riff"]  { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
 body:has(#mute-arp:checked)   .trk[data-name="Arp"]   { --vol: 0 !important; filter: grayscale(1) brightness(0.6); }
@@ -1688,10 +1704,11 @@ html.playing .trk[data-name="Stabs"] { animation: cutdrift 9.3s ease-in-out infi
 
 /* ========== FORM — 8 passes, the pump carries it ========== */
 html { --form: 8; --duck: 0.45; }
-/* 0: riff and hats under the ramp; rhythm section silent from sample one */
-html[data-pass="0"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"], .trk[data-name="Stabs"], .trk[data-name="Vox"]) { --vol: 0 !important; transition: none; }
-/* 1: kick, bass and clap land */
-html[data-pass="1"] :is(.trk[data-name="Stabs"], .trk[data-name="Vox"]) { --vol: 0 !important; }
+/* 0: the wall rides the ramp (stabs included); rhythm section silent from
+   sample one, hook held back */
+html[data-pass="0"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"], .trk[data-name="Vox"], .trk[data-name="Hook"]) { --vol: 0 !important; transition: none; }
+/* 1: the floor lands, full band — hook saves itself for pass 2 */
+html[data-pass="1"] :is(.trk[data-name="Hook"], .trk[data-name="Vox"]) { --vol: 0 !important; }
 /* 4: breakdown — floor drops out, stabs and pads swim */
 html[data-pass="4"] :is(.trk[data-name="Kick"], .trk[data-name="Clap"], .trk[data-name="Bass"]) { --vol: 0 !important; }
 html[data-pass="4"] .trk { --verb: 0.55 !important; }
@@ -1701,7 +1718,7 @@ html[data-pass="6"] .trk[data-name="Bass"] { --wave: sawtooth !important; }
 html.playing[data-pass="5"] .trk[data-name="Bass"],
 html.playing[data-pass="6"] .trk[data-name="Bass"] { animation: acidx 3.4s ease-in-out infinite, microtape 23s ease-in-out infinite; }
 /* 7: outro — back to the loop bones */
-html[data-pass="7"] :is(.trk[data-name="Stabs"], .trk[data-name="Arp"], .trk[data-name="Pad"], .trk[data-name="Vox"]) { --vol: 0 !important; }
+html[data-pass="7"] :is(.trk[data-name="Stabs"], .trk[data-name="Arp"], .trk[data-name="Pad"], .trk[data-name="Vox"], .trk[data-name="Hook"]) { --vol: 0 !important; }
 
 /* the first pass ramps: turntable spin-up + one shared filter opening */
 html.playing[data-pass="0"] #roll .trk {
@@ -1713,6 +1730,7 @@ html.playing[data-pass="0"] #roll .trk {
 
 const PUMP_MIXER = `
 <span>css-only:</span>
+<label><input type="checkbox" id="mute-hook"> mute hook</label>
 <label><input type="checkbox" id="mute-stabs"> mute stabs</label>
 <label><input type="checkbox" id="mute-riff"> mute riff</label>
 <label><input type="checkbox" id="mute-arp"> mute arp</label>
@@ -1737,6 +1755,7 @@ const pump: Song = {
   css: PUMP_CSS,
   mixer: PUMP_MIXER,
   tracks: [
+    { name: "Hook", wave: "brass", vol: 0.13, hue: 5, synth: "--cutoff:1600;--spread:6;--attack:0.01;--release:0.12;--verb:0.3;--echo:0.35;--vibrato:12;--width:0.3", notes: pumpHook },
     { name: "Stabs", wave: "ep", vol: 0.1, hue: 280, synth: "--cutoff:1400;--spread:5;--attack:0.004;--release:0.25;--verb:0.3;--echo:0.25;--width:0.5", notes: pumpStabs },
     { name: "Riff", wave: "sawtooth", vol: 0.035, hue: 200, synth: "--cutoff:1000;--spread:6;--attack:0.006;--release:0.18;--verb:0.25;--width:0.4", notes: pumpRiff },
     { name: "Arp", wave: "pulse25", vol: 0.05, hue: 330, synth: "--cutoff:1800;--echo:0.35;--release:0.15;--width:0.7", notes: pumpArp },
@@ -1744,7 +1763,7 @@ const pump: Song = {
     { name: "Body", wave: "brass", vol: 0.04, hue: 20, synth: "--cutoff:900;--attack:0.005;--release:0.2;--verb:0.25;--width:0.25", notes: pumpBody },
     { name: "Bass", wave: "triangle", vol: 0.4, hue: 145, synth: "--cutoff:750;--fenv:1.6;--attack:0.004;--release:0.08;--verb:0.04;--width:0", notes: pumpBass },
     { name: "Kick", wave: "noise", vol: 0.55, hue: 10, synth: "--verb:0.03;--width:0", notes: pumpKick },
-    { name: "Hats", wave: "noise", vol: 0.35, hue: 60, synth: "--verb:0.15;--pan:0.15", notes: pumpHats },
+    { name: "Hats", wave: "noise", vol: 0.26, hue: 60, synth: "--verb:0.15;--pan:0.15", notes: pumpHats },
     { name: "Clap", wave: "clap", vol: 0.5, hue: 40, synth: "--verb:0.35", notes: pumpClap },
     { name: "Vox", wave: "voice", vol: 0.35, hue: 0, notes: pumpVox },
   ],
