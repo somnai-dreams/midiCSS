@@ -2309,5 +2309,15 @@ const stagePayload = (s: Song): { title: string; bpm: number; steps: number; css
 const stagesJson = JSON.stringify([ex1, ex2, ex3, ex4, exBlue, ex5, ex6, exWall, ex7].map(stagePayload)).replace(/</g, "\\u003c");
 const blogTpl = await Bun.file("src/blog.html").text();
 const blogOut = blogTpl.replace("__STAGES__", () => stagesJson);
-await Bun.write("blog.html", blogOut);
-console.log(`blog.html — ${(blogOut.length / 1024).toFixed(1)} kB, 9 stages`);
+// The blog tour is the site's front door: emit it as index.html (served at the
+// GitHub Pages root with no redirect hop). blog.html stays as a redirect stub
+// so any existing links keep working.
+await Bun.write("index.html", blogOut);
+console.log(`index.html — ${(blogOut.length / 1024).toFixed(1)} kB, 9 stages`);
+await Bun.write(
+  "blog.html",
+  `<!doctype html><meta charset="utf-8"><title>The Markup Is the Music</title>` +
+    `<meta http-equiv="refresh" content="0; url=./index.html">` +
+    `<link rel="canonical" href="./index.html">` +
+    `<p>Moved to <a href="./index.html">index.html</a>.</p>\n`,
+);

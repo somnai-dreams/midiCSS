@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Markup Is the Music — midiCSS</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { color-scheme: dark; }
+body {
+  background: #131118;
+  color: #d9d3c7;
+  font: 17px/1.75 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+}
+.layout {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 560px;
+  gap: 56px;
+}
+main { padding: 96px 0 40vh; max-width: 600px; }
+
+h1 {
+  font-size: clamp(34px, 4.5vw, 48px);
+  line-height: 1.12;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #f3eee2;
+  text-wrap: balance;
+}
+.sub { font-style: italic; color: #968fa3; margin: 18px 0 0; font-size: 18px; text-wrap: pretty; }
+.lede { margin-top: 48px; }
+p { margin: 18px 0; text-wrap: pretty; }
+em { color: #e9e3d5; }
+strong { color: #efe9da; font-weight: 600; }
+
+.ch { margin-top: 14vh; opacity: 0.38; transition: opacity 0.45s ease; }
+.ch.active { opacity: 1; }
+.ch h2 { position: relative; font-size: 24px; font-weight: 500; color: #efe9da; text-wrap: balance; }
+.ch h2::before {
+  content: attr(data-n);
+  display: block;
+  font-size: 68px;
+  line-height: 1;
+  font-style: italic;
+  font-weight: 400;
+  color: hsl(var(--a) 65% 70% / 0.22);
+  margin: 0 0 2px -4px;
+  font-variant-numeric: tabular-nums;
+}
+.ch h2::after {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 2px;
+  margin-top: 14px;
+  border-radius: 1px;
+  background: hsl(var(--a) 60% 62% / 0.55);
+}
+
+p code, li code {
+  font: 13.5px/1 ui-monospace, "SF Mono", Menlo, monospace;
+  background: rgba(255, 255, 255, 0.055);
+  border-radius: 5px;
+  padding: 2.5px 6px;
+  color: #cfc9bd;
+}
+pre {
+  font: 12.5px/1.6 ui-monospace, "SF Mono", Menlo, monospace;
+  color: #b4aec6;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 15px 17px;
+  overflow-x: auto;
+  margin: 20px 0;
+}
+pre .c { color: #6b6478; }
+.cap { font-size: 14px; font-style: italic; color: #847d91; margin: 12px 0 0; }
+a { color: hsl(var(--a, 250) 70% 74%); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: hsl(var(--a, 250) 70% 74% / 0.35); transition: text-decoration-color 0.15s ease; }
+a:hover { text-decoration-color: hsl(var(--a, 250) 70% 74%); }
+
+/* ---- the sticky player rail ---- */
+.rail {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px 0;
+}
+.stage {
+  font: 13px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  color: #847d91;
+  margin: 0 0 10px 4px;
+  min-height: 20px;
+}
+.stage b { color: #d9d3c7; font-weight: 600; }
+.rail-frame {
+  width: 100%;
+  max-width: 560px;
+  transition: max-width 0.6s cubic-bezier(0.2, 0, 0, 1);
+  padding: 6px;
+  border-radius: 16px; /* concentric: iframe 10 + padding 6 */
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.rail-frame.narrow { max-width: 360px; }
+/* chapter 5: the frame breathes open and closed so the media query inside
+   audibly flips on every cycle */
+.rail-frame.cycling { animation: openclose 9s ease-in-out infinite; }
+@keyframes openclose {
+  0%, 100% { max-width: 560px; }
+  50% { max-width: 360px; }
+}
+.rail-frame iframe {
+  width: 100%;
+  height: 470px;
+  border: none;
+  border-radius: 10px;
+  background: #0e0f13;
+  display: block;
+  outline: 1px solid rgba(255, 255, 255, 0.1);
+  outline-offset: -1px;
+}
+.railhint { font-size: 13.5px; font-style: italic; color: #6e6880; margin: 12px 4px 0; text-wrap: pretty; }
+
+.outro { margin-top: 16vh; }
+.outro h2 { font-size: 24px; font-weight: 500; color: #efe9da; margin-bottom: 6px; }
+ul { margin: 18px 0 18px 4px; list-style: none; }
+li { margin: 14px 0; padding-left: 22px; position: relative; text-wrap: pretty; }
+li::before { content: "♪"; position: absolute; left: 0; top: 1px; color: hsl(var(--a, 250) 60% 70% / 0.6); font-size: 14px; }
+.note {
+  font-size: 15.5px;
+  background: rgba(255, 226, 170, 0.045);
+  box-shadow: inset 0 0 0 1px rgba(255, 226, 170, 0.1);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 28px 0;
+}
+.fin { font-style: italic; color: #968fa3; margin-top: 40px; font-size: 16px; }
+
+@media (max-width: 980px) {
+  .layout { display: block; }
+  main { padding-top: 56px; max-width: none; }
+  .rail {
+    position: sticky;
+    top: 0;
+    height: auto;
+    padding: 10px 0;
+    background: linear-gradient(#131118 86%, transparent);
+    z-index: 5;
+  }
+  .rail-frame iframe { height: 250px; }
+  .ch { margin-top: 80px; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<main>
+<h1>The Markup Is the&nbsp;Music</h1>
+<p class="sub">A piece of music you can open in a text editor. One player, seven chapters: scroll, and the song on the right rebuilds itself in place.</p>
+
+<div class="lede">
+<p>The premise: a note is a <code>&lt;b&gt;</code> element placed on a CSS grid. The grid row is pitch, one row per semitone. The grid column is time, one column per sixteenth note. Tempo, instruments, mix, and arrangement are custom properties. The only JavaScript is a player that reads the <em>rendered geometry</em> — a note sounds exactly where the browser painted it — and an editor that writes inline styles back. There is no other data model.</p>
+<p>That decision means the entire CSS engine becomes a music system, and it is also why this page works the way it does: <strong>press play once in the player, then just scroll.</strong> Each chapter swaps new markup and CSS into the same live document, and the transport never stops; the song simply becomes the next idea mid-loop.</p>
+</div>
+
+<section class="ch" data-stage="0" style="--a:205">
+<h2 data-n="01">hello, note</h2>
+<p>The smallest possible song. One track (a <code>&lt;section&gt;</code>), one note (a <code>&lt;b&gt;</code>), placed with <code>grid-area</code>: row 24 is middle C, columns 1 through 17 hold it for the whole bar. No song-specific CSS exists at this point. The markup alone is the music.</p>
+<pre>&lt;main id="roll" style="--steps:16"&gt;
+  &lt;section class="trk" data-name="Note" style="--wave:sine;--vol:0.4"&gt;
+    &lt;b style="grid-area:24/1/25/17"&gt;&lt;/b&gt;
+  &lt;/section&gt;
+&lt;/main&gt;</pre>
+<p class="cap">Try drawing on the grid — the editor writes the same markup you just read. <a href="examples/ex1-hello.html" target="_blank">open this chapter as a file ↗</a></p>
+</section>
+
+<section class="ch" data-stage="1" style="--a:160">
+<h2 data-n="02">rows are pitch, columns are time</h2>
+<p>A melody is elements at different rows and columns. Up is higher; right is later. You could write a tune in any text editor, and the browser would render the score with no JavaScript at all. The script only adds sound and a mouse.</p>
+<pre>&lt;b style="grid-area:24/1/25/5"&gt;&lt;/b&gt;   <span class="c">&lt;!-- C4, beat one --&gt;</span>
+&lt;b style="grid-area:20/5/21/9"&gt;&lt;/b&gt;   <span class="c">&lt;!-- E4, beat two --&gt;</span>
+&lt;b style="grid-area:17/9/18/13"&gt;&lt;/b&gt;  <span class="c">&lt;!-- G4, beat three --&gt;</span>
+&lt;b style="grid-area:12/13/13/17"&gt;&lt;/b&gt; <span class="c">&lt;!-- C5, beat four --&gt;</span></pre>
+<p class="cap"><a href="examples/ex2-melody.html" target="_blank">open this chapter as a file ↗</a></p>
+</section>
+
+<section class="ch" data-stage="2" style="--a:280">
+<h2 data-n="03">tracks are sections, sound is properties</h2>
+<p>A bass arrives, and with it the instrument rack: custom properties on each track element. <code>--wave</code> chooses the voice (oscillators, wavetables like <code>ep</code> and <code>brass</code>, drum synthesis, even <code>url(sample.wav)</code>); <code>--cutoff</code>, <code>--spread</code>, <code>--attack</code>, <code>--verb</code> shape it; <code>--bpm</code> lives on <code>&lt;html&gt;</code>. The player reads computed values continuously, so devtools is a synthesizer.</p>
+<pre>&lt;html style="--bpm:120"&gt;
+...
+&lt;section class="trk" data-name="Melody" style="--wave:pulse25;--cutoff:2400"&gt;
+&lt;section class="trk" data-name="Bass"   style="--wave:triangle;--vol:0.3"&gt;</pre>
+<p class="cap"><a href="examples/ex3-tracks.html" target="_blank">open this chapter as a file ↗</a></p>
+</section>
+
+<section class="ch" data-stage="3" style="--a:330">
+<h2 data-n="04">the cascade is a mixing console</h2>
+<p>Because volume is a property, muting is a selector. Because pitch is geometry, transposition is a transform: one row is a semitone, so <strong>one pixel is about six cents</strong>, and the format is natively microtonal. The checkboxes now sitting in the player are plain HTML inputs wired through <code>:has()</code> — try them. And since <code>translate</code> composes with <code>transform</code>, octave-up and quarter-tone-sharp stack.</p>
+<pre>body:has(#mute-bass:checked) .trk[data-name="Bass"] { --vol: 0 !important; }
+body:has(#octave:checked)  .trk[data-name="Melody"] { transform: translateY(calc(var(--rh) * -12)); }
+body:has(#quarter:checked) .trk[data-name="Melody"] { translate: 0 calc(var(--rh) * -0.5); }</pre>
+<p class="cap">No JavaScript is involved in those toggles. It is only the cascade. <a href="examples/ex4-cascade.html" target="_blank">open this chapter as a file ↗</a></p>
+</section>
+
+<section class="ch" data-stage="4" style="--a:25">
+<h2 data-n="05">the grid is a suggestion</h2>
+<p>The grid is twelve-tone equal temperament, but notes are under no obligation to sit on it. The riff now playing has a just-intonation third (16 cents sharp of the piano's), a blue note parked exactly <em>between</em> two frets, and a septimal seventh 31 cents flat — the note horn players actually reach for. Time is off the grid too: the offbeats land at two-thirds of the beat, swing encoded as a fraction of a column. <strong>Hit quantize in the player</strong> and every transform is stripped: the same riff, dead straight, in 12-TET. That toggle is the whole argument for this format.</p>
+<pre>&lt;b style="grid-area:21/3/22/4;
+   transform:translate(calc(var(--cw) * 0.67), calc(var(--rh) * -0.16)) scaleX(1.33)"&gt;&lt;/b&gt;
+<span class="c">/* a swung, just-intonation E♭ — position is pitch, so cents are pixels */</span>
+
+body:has(#quantize:checked) .trk b { transform: none !important; }</pre>
+<p class="cap">This is <a href="blue-31.html" target="_blank">BLUE 31</a> in miniature. <a href="examples/ex-blue.html" target="_blank">open this chapter as a file ↗</a></p>
+</section>
+
+<section class="ch" data-stage="5" style="--a:120">
+<h2 data-n="06">media queries are arrangements</h2>
+<p>If the mix is CSS, the song can respond to anything CSS can see — including the width of its own window. Watch the player: while you read this chapter the page <strong>breathes the frame open and closed</strong>, and every time it narrows past the breakpoint the media query flips — drums cut, tempo drops — then the groove returns as it widens. The same file is a different arrangement on a phone.</p>
+<pre>@media (max-width: 480px) {
+  html { --bpm: 84 !important; }
+  .trk[data-name="Drums"] { --vol: 0 !important; }
+}</pre>
+<p class="cap"><a href="examples/ex5-responsive.html" target="_blank">open this chapter as a file ↗</a> — it has a drag-to-resize corner of its own.</p>
+</section>
+
+<section class="ch" data-stage="6" style="--a:95">
+<h2 data-n="07">animations are automation</h2>
+<p>Synth parameters are registered properties, so <code>@keyframes</code> are automation lanes. The music has changed underneath you: a bassline whose filter is swept by an animation — acid as a stylesheet rule — under a kick that pumps everything else through one property, <code>--duck</code>. Tick <em>tape</em> in the player: an animated transform warbles every track's pitch, and because the engine keeps re-reading geometry while notes sound, held notes bend live.</p>
+<pre>html.playing .trk[data-name="Acid"] { animation: sweep 3.1s ease-in-out infinite; }
+@keyframes sweep { 0%, 100% { --cutoff: 250; } 50% { --cutoff: 2600; } }
+
+html { --duck: 0.4; }  <span class="c">/* every kick ducks everything else */</span></pre>
+<p class="cap"><a href="examples/ex6-automation.html" target="_blank">open this chapter as a file ↗</a></p>
+</section>
+
+<section class="ch" data-stage="7" style="--a:350">
+<h2 data-n="08">the wall</h2>
+<p>Why settle for one note per note? Every hit in this stage is a <strong>five-note microtonal cluster</strong> — copies spread ±22 cents, close enough to fuse into one fat voice, far enough apart to churn. It is the supersaw trick, except the unison is written in markup, and a kick pumps the whole mass through one property, <code>--duck</code>. Then the toggles: <em>cathedral</em> raises every reverb send at once, and <em>collapse</em> is a scaleY animation that folds the cluster field toward a single row — the sounding pads audibly bend as the layout compresses, because the player never stops reading the geometry.</p>
+<pre>html.playing:has(#collapse:checked) :is(.trk[data-name="Cluster"], .trk[data-name="Pad"]) {
+  animation: fold 8s ease-in-out infinite;
+  transform-origin: 50% calc(var(--rh) * 23.5);
+}
+@keyframes fold { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }</pre>
+<p class="cap">This is <a href="hammers-x.html" target="_blank">HAMMERS X</a> in miniature. <a href="examples/ex-wall.html" target="_blank">open this chapter as a file ↗</a></p>
+</section>
+
+<section class="ch" data-stage="8" style="--a:265">
+<h2 data-n="09">music from nowhere</h2>
+<p>Two endgames at once. The first track's markup is <em>eight empty elements</em>; every pitch and position comes from a single rule built on <code>sibling-index()</code> and <code>mod()</code>. The stylesheet is the composer. The second track holds no notes at all until you tick <em>summon</em> in the player — it hears a track's <code>::before</code> and <code>::after</code> too, so a checkbox conjures music that exists nowhere in the document tree.</p>
+<pre>.trk[data-name="Formula"] b {
+  grid-column: calc((sibling-index() - 1) * 2 + 1);
+  grid-row: calc(28 - mod(sibling-index() * 5, 12));
+}
+body:has(#summon:checked) .trk[data-name="Ghost"]::before {
+  content: ""; grid-area: 36 / 1 / 37 / 17;
+}</pre>
+<p class="cap"><a href="examples/ex7-nowhere.html" target="_blank">open this chapter as a file ↗</a></p>
+</section>
+
+<section class="outro" style="--a:35">
+<h2>where this goes</h2>
+<p>Stack all of it — per-note velocity, swing as fractional-step transforms, just-intonation detunes, samples baked in as data URIs, a <code>data-pass</code> attribute that turns loop counts into song structure — and you get records. Each is still a single HTML file you can open, edit, and <code>git diff</code>:</p>
+<ul>
+  <li><a href="pump.html" target="_blank">PUMP</a> — filter house with a sampled 909 kit, a sidechain pump, and an eight-pass arrangement written in attribute selectors</li>
+  <li><a href="hammers-x.html" target="_blank">HAMMERS X</a> — 7,291 notes, every hit a microtonal cluster; acid, tape and cathedral as checkboxes</li>
+  <li><a href="blue-31.html" target="_blank">BLUE 31</a> — microtonal jazz: quarter-tone blue notes, septimal sevenths, and a <em>quantize</em> toggle that strips the humanity off with one rule</li>
+  <li><a href="selector.html" target="_blank">SELECTOR</a> — acid techno whose markup contains zero notes; the composition is selector arithmetic</li>
+  <li><a href="ghost-ratio.html" target="_blank">GHOST RATIO</a> — the harmonic series in just intonation, with a scaleY animation that folds the whole spectrum into unison</li>
+</ul>
+<p class="note">Party trick: <code>sonify.js</code> in this repo is a console paste that reads <em>any website's</em> layout as one of these scores. Left edge is time, height is pitch, tags are instruments. Every page already is one of these songs. Nobody had pressed play.</p>
+<p class="fin">If pitch is geometry and the mix is the cascade, then everything CSS can do — respond, animate, compose — music can do too. The stylesheet was a sequencer all along.</p>
+</section>
+</main>
+
+<aside class="rail">
+  <p class="stage"><b id="stageno">01</b> · <span id="stagename">hello, note</span></p>
+  <div class="rail-frame" id="railframe">
+    <iframe id="player" src="examples/ex1-hello.html?embed" title="midiCSS player"></iframe>
+  </div>
+  <p class="railhint">Press play once. From then on the song follows your scroll — each chapter is swapped into the same live document while the transport keeps running.</p>
+</aside>
+
+</div>
+
+<script>
+const STAGES = [{"title":"hello, note","bpm":90,"steps":16,"css":"/* no song css — the markup alone is the music */","mixer":"\u003cspan>one element, one note: grid row 24 = C4, columns 1→17 = the whole bar\u003c/span>","song":"\u003csection class=\"trk\" data-name=\"Note\" style=\"--wave:sine;--vol:0.4;--hue:200\">\n  \u003cb style=\"grid-area:24/1/25/17\">\u003c/b>\n\u003c/section>"},{"title":"rows are pitch, columns are time","bpm":110,"steps":32,"css":"","mixer":"\u003cspan>up = higher, right = later — that's the whole file format\u003c/span>","song":"\u003csection class=\"trk\" data-name=\"Melody\" style=\"--wave:triangle;--vol:0.3;--hue:200\">\n  \u003cb style=\"grid-area:24/1/25/5\">\u003c/b>\n  \u003cb style=\"grid-area:20/5/21/9\">\u003c/b>\n  \u003cb style=\"grid-area:17/9/18/13\">\u003c/b>\n  \u003cb style=\"grid-area:12/13/13/17\">\u003c/b>\n  \u003cb style=\"grid-area:17/17/18/21\">\u003c/b>\n  \u003cb style=\"grid-area:20/21/21/25\">\u003c/b>\n  \u003cb style=\"grid-area:24/25/25/33\">\u003c/b>\n\u003c/section>"},{"title":"tracks are sections, sound is properties","bpm":120,"steps":32,"css":"","mixer":"\u003cspan>--wave, --vol, --hue, --bpm: the instrument rack is custom properties\u003c/span>","song":"\u003csection class=\"trk\" data-name=\"Melody\" style=\"--wave:pulse25;--vol:0.2;--hue:200;--cutoff:2400\">\n  \u003cb style=\"grid-area:24/1/25/5\">\u003c/b>\n  \u003cb style=\"grid-area:20/5/21/9\">\u003c/b>\n  \u003cb style=\"grid-area:17/9/18/13\">\u003c/b>\n  \u003cb style=\"grid-area:12/13/13/17\">\u003c/b>\n  \u003cb style=\"grid-area:17/17/18/21\">\u003c/b>\n  \u003cb style=\"grid-area:20/21/21/25\">\u003c/b>\n  \u003cb style=\"grid-area:24/25/25/33\">\u003c/b>\n\u003c/section>\n\u003csection class=\"trk\" data-name=\"Bass\" style=\"--wave:triangle;--vol:0.3;--hue:145\">\n  \u003cb style=\"grid-area:36/1/37/9\">\u003c/b>\n  \u003cb style=\"grid-area:31/9/32/17\">\u003c/b>\n  \u003cb style=\"grid-area:29/17/30/25\">\u003c/b>\n  \u003cb style=\"grid-area:36/25/37/33\">\u003c/b>\n\u003c/section>"},{"title":"the cascade is a mixing console","bpm":120,"steps":32,"css":"/* the cascade is a mixing console */\nbody:has(#mute-bass:checked) .trk[data-name=\"Bass\"] { --vol: 0 !important; }\n/* geometry is pitch: 1 row = 1 semitone, so 1px = ~6 cents */\nbody:has(#octave:checked) .trk[data-name=\"Melody\"] { transform: translateY(calc(var(--rh) * -12)); }\n/* translate composes with transform — both toggles stack */\nbody:has(#quarter:checked) .trk[data-name=\"Melody\"] { translate: 0 calc(var(--rh) * -0.5); }","mixer":"\u003clabel>\u003cinput type=\"checkbox\" id=\"mute-bass\"> mute the bass (a CSS rule)\u003c/label>\n\u003clabel>\u003cinput type=\"checkbox\" id=\"octave\"> melody +8va (transform)\u003c/label>\n\u003clabel>\u003cinput type=\"checkbox\" id=\"quarter\"> +50 cents (translate — they stack)\u003c/label>","song":"\u003csection class=\"trk\" data-name=\"Melody\" style=\"--wave:pulse25;--vol:0.2;--hue:200;--cutoff:2400\">\n  \u003cb style=\"grid-area:24/1/25/5\">\u003c/b>\n  \u003cb style=\"grid-area:20/5/21/9\">\u003c/b>\n  \u003cb style=\"grid-area:17/9/18/13\">\u003c/b>\n  \u003cb style=\"grid-area:12/13/13/17\">\u003c/b>\n  \u003cb style=\"grid-area:17/17/18/21\">\u003c/b>\n  \u003cb style=\"grid-area:20/21/21/25\">\u003c/b>\n  \u003cb style=\"grid-area:24/25/25/33\">\u003c/b>\n\u003c/section>\n\u003csection class=\"trk\" data-name=\"Bass\" style=\"--wave:triangle;--vol:0.3;--hue:145\">\n  \u003cb style=\"grid-area:36/1/37/9\">\u003c/b>\n  \u003cb style=\"grid-area:31/9/32/17\">\u003c/b>\n  \u003cb style=\"grid-area:29/17/30/25\">\u003c/b>\n  \u003cb style=\"grid-area:36/25/37/33\">\u003c/b>\n\u003c/section>"},{"title":"the grid is a suggestion","bpm":116,"steps":32,"css":"/* the A/B: strip every transform — microtones and swing vanish, and the\n   same riff plays dead straight in 12-TET */\nbody:has(#quantize:checked) .trk b { transform: none !important; }","mixer":"\u003clabel>\u003cinput type=\"checkbox\" id=\"quantize\"> quantize: snap to 12-TET, kill the swing\u003c/label>","song":"\u003csection class=\"trk\" data-name=\"Riff\" style=\"--wave:brass;--vol:0.2;--hue:25;--cutoff:1800;--vibrato:10;--echo:0.2;--verb:0.25;--attack:0.01;--release:0.1\">\n  \u003cb style=\"grid-area:24/1/25/3\">\u003c/b>\n  \u003cb style=\"grid-area:21/3/22/4;transform-origin:left;transform:translate(calc(var(--cw) * 0.6700),calc(var(--rh) * -0.1600)) scaleX(1.3300)\">\u003c/b>\n  \u003cb style=\"grid-area:19/5/20/7\">\u003c/b>\n  \u003cb style=\"grid-area:17/7/18/8;transform-origin:left;transform:translate(calc(var(--cw) * 0.6700),calc(var(--rh) * 0.5000)) scaleX(1.3300)\">\u003c/b>\n  \u003cb style=\"grid-area:17/9/18/12\">\u003c/b>\n  \u003cb style=\"grid-area:14/13/15/15;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.3100))\">\u003c/b>\n  \u003cb style=\"grid-area:17/15/18/16;transform-origin:left;transform:translate(calc(var(--cw) * 0.6700),0px) scaleX(1.3300)\">\u003c/b>\n  \u003cb style=\"grid-area:12/17/13/21\">\u003c/b>\n  \u003cb style=\"grid-area:14/21/15/22;transform-origin:left;transform:translate(calc(var(--cw) * 0.6700),calc(var(--rh) * 0.3100)) scaleX(1.3300)\">\u003c/b>\n  \u003cb style=\"grid-area:17/23/18/25\">\u003c/b>\n  \u003cb style=\"grid-area:17/25/18/26;transform-origin:left;transform:translate(calc(var(--cw) * 0.6700),calc(var(--rh) * 0.5000)) scaleX(1.3300)\">\u003c/b>\n  \u003cb style=\"grid-area:19/27/20/29\">\u003c/b>\n  \u003cb style=\"grid-area:21/29/22/30;transform-origin:left;transform:translate(calc(var(--cw) * 0.6700),calc(var(--rh) * -0.1600)) scaleX(1.3300)\">\u003c/b>\n  \u003cb style=\"grid-area:24/31/25/33\">\u003c/b>\n\u003c/section>\n\u003csection class=\"trk\" data-name=\"Bass\" style=\"--wave:triangle;--vol:0.3;--hue:145;--cutoff:700;--width:0.1\">\n  \u003cb style=\"grid-area:48/1/49/4;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/5/37/8;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:48/9/49/12;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/13/37/16;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:48/17/49/20;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/21/37/24;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:48/25/49/28;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/29/37/32;--vel:0.7\">\u003c/b>\n\u003c/section>"},{"title":"media queries are arrangements","bpm":126,"steps":32,"css":"/* the song rearranges itself by viewport — narrow the window (or let the\n   blog breathe this frame) and the drums cut while the tempo settles */\n@media (max-width: 480px) {\n  html { --bpm: 84 !important; }\n  .trk[data-name=\"Drums\"] { --vol: 0 !important; }\n}","mixer":"\u003cspan>narrow window = slower, drumless. The remix is a media query.\u003c/span>","song":"\u003csection class=\"trk\" data-name=\"Melody\" style=\"--wave:pulse25;--vol:0.2;--hue:200;--cutoff:2400\">\n  \u003cb style=\"grid-area:24/1/25/5\">\u003c/b>\n  \u003cb style=\"grid-area:20/5/21/9\">\u003c/b>\n  \u003cb style=\"grid-area:17/9/18/13\">\u003c/b>\n  \u003cb style=\"grid-area:12/13/13/17\">\u003c/b>\n  \u003cb style=\"grid-area:17/17/18/21\">\u003c/b>\n  \u003cb style=\"grid-area:20/21/21/25\">\u003c/b>\n  \u003cb style=\"grid-area:24/25/25/33\">\u003c/b>\n\u003c/section>\n\u003csection class=\"trk\" data-name=\"Bass\" style=\"--wave:triangle;--vol:0.3;--hue:145\">\n  \u003cb style=\"grid-area:36/1/37/9\">\u003c/b>\n  \u003cb style=\"grid-area:31/9/32/17\">\u003c/b>\n  \u003cb style=\"grid-area:29/17/30/25\">\u003c/b>\n  \u003cb style=\"grid-area:36/25/37/33\">\u003c/b>\n\u003c/section>\n\u003csection class=\"trk\" data-name=\"Drums\" style=\"--wave:noise;--vol:0.4;--hue:35\">\n  \u003cb style=\"grid-area:36/1/37/2;--vel:0.9\">\u003c/b>\n  \u003cb style=\"grid-area:36/9/37/10;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:20/5/21/6;--vel:0.8\">\u003c/b>\n  \u003cb style=\"grid-area:20/13/21/14;--vel:0.8\">\u003c/b>\n  \u003cb style=\"grid-area:3/1/4/2;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/3/4/4;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/5/4/6;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/7/4/8;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/9/4/10;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/11/4/12;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/13/4/14;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/15/4/16;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:36/17/37/18;--vel:0.9\">\u003c/b>\n  \u003cb style=\"grid-area:36/25/37/26;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:20/21/21/22;--vel:0.8\">\u003c/b>\n  \u003cb style=\"grid-area:20/29/21/30;--vel:0.8\">\u003c/b>\n  \u003cb style=\"grid-area:3/17/4/18;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/19/4/20;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/21/4/22;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/23/4/24;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/25/4/26;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/27/4/28;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/29/4/30;--vel:0.3\">\u003c/b>\n  \u003cb style=\"grid-area:3/31/4/32;--vel:0.3\">\u003c/b>\n\u003c/section>"},{"title":"animations are automation","bpm":130,"steps":32,"css":"/* @keyframes are automation lanes: the filter never sits still */\nhtml.playing .trk[data-name=\"Acid\"] { animation: sweep 3.1s ease-in-out infinite; }\n@keyframes sweep { 0%, 100% { --cutoff: 250; } 50% { --cutoff: 2600; } }\n/* every kick dips the rest of the mix — the sidechain pump is one property */\nhtml { --duck: 0.4; }\n/* tape: the whole song's pitch warbles (sounding notes bend live) */\nhtml.playing:has(#tape:checked) #roll .trk { animation: warble 11s ease-in-out infinite; }\n@keyframes warble { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(calc(var(--rh) * -0.3)); } }","mixer":"\u003clabel>\u003cinput type=\"checkbox\" id=\"tape\"> tape warble (an animated transform)\u003c/label>","song":"\u003csection class=\"trk\" data-name=\"Acid\" style=\"--wave:sawtooth;--vol:0.25;--hue:150;--cutoff:800;--fenv:2;--attack:0.004;--release:0.1\">\n  \u003cb style=\"grid-area:48/1/49/3;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:48/3/49/5;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:36/5/37/7;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:48/7/49/9;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:45/9/46/11;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:48/11/49/13;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:38/13/39/15;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:41/15/42/17;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:48/17/49/19;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:48/19/49/21;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:36/21/37/23;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:48/23/49/25;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:45/25/46/27;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:48/27/49/29;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:38/29/39/31;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:41/31/42/33;--vel:0.7\">\u003c/b>\n\u003c/section>\n\u003csection class=\"trk\" data-name=\"Kick\" style=\"--wave:noise;--vol:0.35;--hue:10;--verb:0.05;--width:0\">\n  \u003cb style=\"grid-area:36/1/37/2;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/5/37/6;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/9/37/10;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/13/37/14;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/17/37/18;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/21/37/22;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/25/37/26;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:36/29/37/30;--vel:1\">\u003c/b>\n\u003c/section>"},{"title":"the wall","bpm":124,"steps":32,"css":"/* every kick dips the whole mass — the pump is one property */\nhtml { --duck: 0.4; }\n/* cathedral: drown the wall */\nbody:has(#cathedral:checked) .trk { --verb: 0.6 !important; }\n/* collapse: fold the cluster field toward one row and let it bloom back —\n   sounding notes bend live as the layout compresses */\nhtml.playing:has(#collapse:checked) :is(.trk[data-name=\"Cluster\"], .trk[data-name=\"Pad\"]) {\n  animation: fold 8s ease-in-out infinite;\n  transform-origin: 50% calc(var(--rh) * 23.5);\n}\n@keyframes fold { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.1); } }","mixer":"\u003clabel>\u003cinput type=\"checkbox\" id=\"cathedral\"> cathedral\u003c/label>\n\u003clabel>\u003cinput type=\"checkbox\" id=\"collapse\"> collapse\u003c/label>","song":"\u003csection class=\"trk\" data-name=\"Cluster\" style=\"--wave:ep;--vol:0.06;--hue:200;--cutoff:2400;--attack:0.003;--release:0.2;--verb:0.3;--width:0.6\">\n  \u003cb style=\"grid-area:24/1/25/3;--vel:0.9;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.2600))\">\u003c/b>\n  \u003cb style=\"grid-area:24/1/25/3;--vel:0.846;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1195))\">\u003c/b>\n  \u003cb style=\"grid-area:24/1/25/3;--vel:0.792;transform-origin:left;transform:translate(calc(var(--cw) * 0.0263),calc(var(--rh) * -0.0210))\">\u003c/b>\n  \u003cb style=\"grid-area:24/1/25/3;--vel:0.7380000000000001;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0815))\">\u003c/b>\n  \u003cb style=\"grid-area:24/1/25/3;--vel:0.684;transform-origin:left;transform:translate(calc(var(--cw) * 0.0026),calc(var(--rh) * -0.2221))\">\u003c/b>\n  \u003cb style=\"grid-area:21/3/22/5;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0376),calc(var(--rh) * 0.0233))\">\u003c/b>\n  \u003cb style=\"grid-area:21/2/22/4;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9758),calc(var(--rh) * -0.0372))\">\u003c/b>\n  \u003cb style=\"grid-area:21/3/22/5;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0139),calc(var(--rh) * -0.1777))\">\u003c/b>\n  \u003cb style=\"grid-area:21/2/22/4;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9521),calc(var(--rh) * -0.2382))\">\u003c/b>\n  \u003cb style=\"grid-area:21/2/22/4;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9902),calc(var(--rh) * -0.3788))\">\u003c/b>\n  \u003cb style=\"grid-area:17/5/18/7;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0253),calc(var(--rh) * 0.1866))\">\u003c/b>\n  \u003cb style=\"grid-area:17/4/18/6;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9634),calc(var(--rh) * 0.1261))\">\u003c/b>\n  \u003cb style=\"grid-area:17/5/18/7;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0015),calc(var(--rh) * -0.0144))\">\u003c/b>\n  \u003cb style=\"grid-area:17/5/18/7;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0397),calc(var(--rh) * -0.0749))\">\u003c/b>\n  \u003cb style=\"grid-area:17/4/18/6;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9778),calc(var(--rh) * -0.2155))\">\u003c/b>\n  \u003cb style=\"grid-area:14/7/15/9;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0129),calc(var(--rh) * 0.0099))\">\u003c/b>\n  \u003cb style=\"grid-area:14/6/15/8;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9510),calc(var(--rh) * -0.0506))\">\u003c/b>\n  \u003cb style=\"grid-area:14/6/15/8;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9892),calc(var(--rh) * -0.1911))\">\u003c/b>\n  \u003cb style=\"grid-area:14/7/15/9;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0273),calc(var(--rh) * -0.2516))\">\u003c/b>\n  \u003cb style=\"grid-area:14/6/15/8;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9655),calc(var(--rh) * -0.3922))\">\u003c/b>\n  \u003cb style=\"grid-area:12/9/13/11;--vel:0.9;transform-origin:left;transform:translate(0px,calc(var(--rh) * 0.1932))\">\u003c/b>\n  \u003cb style=\"grid-area:12/9/13/11;--vel:0.846;transform-origin:left;transform:translate(calc(var(--cw) * 0.0387),calc(var(--rh) * 0.1327))\">\u003c/b>\n  \u003cb style=\"grid-area:12/8/13/10;--vel:0.792;transform-origin:left;transform:translate(calc(var(--cw) * 0.9768),calc(var(--rh) * -0.0078))\">\u003c/b>\n  \u003cb style=\"grid-area:12/9/13/11;--vel:0.7380000000000001;transform-origin:left;transform:translate(calc(var(--cw) * 0.0149),calc(var(--rh) * -0.1484))\">\u003c/b>\n  \u003cb style=\"grid-area:12/8/13/10;--vel:0.684;transform-origin:left;transform:translate(calc(var(--cw) * 0.9531),calc(var(--rh) * -0.2089))\">\u003c/b>\n  \u003cb style=\"grid-area:17/10/18/12;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9881),calc(var(--rh) * 0.1765))\">\u003c/b>\n  \u003cb style=\"grid-area:17/11/18/13;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0263),calc(var(--rh) * 0.1160))\">\u003c/b>\n  \u003cb style=\"grid-area:17/10/18/12;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9644),calc(var(--rh) * -0.0245))\">\u003c/b>\n  \u003cb style=\"grid-area:17/11/18/13;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0026),calc(var(--rh) * -0.1651))\">\u003c/b>\n  \u003cb style=\"grid-area:17/11/18/13;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0407),calc(var(--rh) * -0.2256))\">\u003c/b>\n  \u003cb style=\"grid-area:24/12/25/14;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9758),calc(var(--rh) * 0.1998))\">\u003c/b>\n  \u003cb style=\"grid-area:24/13/25/15;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0139),calc(var(--rh) * 0.1393))\">\u003c/b>\n  \u003cb style=\"grid-area:24/12/25/14;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9521),calc(var(--rh) * -0.0012))\">\u003c/b>\n  \u003cb style=\"grid-area:24/12/25/14;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9902),calc(var(--rh) * -0.1418))\">\u003c/b>\n  \u003cb style=\"grid-area:24/13/25/15;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0284),calc(var(--rh) * -0.2023))\">\u003c/b>\n  \u003cb style=\"grid-area:21/14/22/16;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9634),calc(var(--rh) * 0.0431))\">\u003c/b>\n  \u003cb style=\"grid-area:21/15/22/17;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0015),calc(var(--rh) * -0.0174))\">\u003c/b>\n  \u003cb style=\"grid-area:21/15/22/17;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0397),calc(var(--rh) * -0.1579))\">\u003c/b>\n  \u003cb style=\"grid-area:21/14/22/16;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9778),calc(var(--rh) * -0.2985))\">\u003c/b>\n  \u003cb style=\"grid-area:21/15/22/17;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0160),calc(var(--rh) * -0.3590))\">\u003c/b>\n  \u003cb style=\"grid-area:17/16/18/18;--vel:0.9;transform-origin:left;transform:translate(calc(var(--cw) * 0.9510),calc(var(--rh) * 0.2064))\">\u003c/b>\n  \u003cb style=\"grid-area:17/16/18/18;--vel:0.846;transform-origin:left;transform:translate(calc(var(--cw) * 0.9892),calc(var(--rh) * 0.1459))\">\u003c/b>\n  \u003cb style=\"grid-area:17/17/18/19;--vel:0.792;transform-origin:left;transform:translate(calc(var(--cw) * 0.0273),calc(var(--rh) * 0.0054))\">\u003c/b>\n  \u003cb style=\"grid-area:17/16/18/18;--vel:0.7380000000000001;transform-origin:left;transform:translate(calc(var(--cw) * 0.9655),calc(var(--rh) * -0.1352))\">\u003c/b>\n  \u003cb style=\"grid-area:17/17/18/19;--vel:0.684;transform-origin:left;transform:translate(calc(var(--cw) * 0.0036),calc(var(--rh) * -0.1957))\">\u003c/b>\n  \u003cb style=\"grid-area:14/19/15/21;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0387),calc(var(--rh) * 0.0297))\">\u003c/b>\n  \u003cb style=\"grid-area:14/18/15/20;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9768),calc(var(--rh) * -0.0308))\">\u003c/b>\n  \u003cb style=\"grid-area:14/19/15/21;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0149),calc(var(--rh) * -0.1713))\">\u003c/b>\n  \u003cb style=\"grid-area:14/18/15/20;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9531),calc(var(--rh) * -0.3119))\">\u003c/b>\n  \u003cb style=\"grid-area:14/18/15/20;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9912),calc(var(--rh) * -0.3724))\">\u003c/b>\n  \u003cb style=\"grid-area:12/21/13/23;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0263),calc(var(--rh) * 0.2130))\">\u003c/b>\n  \u003cb style=\"grid-area:12/20/13/22;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9644),calc(var(--rh) * 0.0725))\">\u003c/b>\n  \u003cb style=\"grid-area:12/21/13/23;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0026),calc(var(--rh) * 0.0120))\">\u003c/b>\n  \u003cb style=\"grid-area:12/21/13/23;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0407),calc(var(--rh) * -0.1286))\">\u003c/b>\n  \u003cb style=\"grid-area:12/20/13/22;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9789),calc(var(--rh) * -0.1891))\">\u003c/b>\n  \u003cb style=\"grid-area:17/23/18/25;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.0139),calc(var(--rh) * 0.1963))\">\u003c/b>\n  \u003cb style=\"grid-area:17/22/18/24;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.9521),calc(var(--rh) * 0.0558))\">\u003c/b>\n  \u003cb style=\"grid-area:17/22/18/24;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9902),calc(var(--rh) * -0.0047))\">\u003c/b>\n  \u003cb style=\"grid-area:17/23/18/25;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0284),calc(var(--rh) * -0.1453))\">\u003c/b>\n  \u003cb style=\"grid-area:17/22/18/24;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.9665),calc(var(--rh) * -0.2058))\">\u003c/b>\n  \u003cb style=\"grid-area:24/25/25/27;--vel:0.9;transform-origin:left;transform:translate(calc(var(--cw) * 0.0015),calc(var(--rh) * 0.2196))\">\u003c/b>\n  \u003cb style=\"grid-area:24/25/25/27;--vel:0.846;transform-origin:left;transform:translate(calc(var(--cw) * 0.0397),calc(var(--rh) * 0.0791))\">\u003c/b>\n  \u003cb style=\"grid-area:24/24/25/26;--vel:0.792;transform-origin:left;transform:translate(calc(var(--cw) * 0.9778),calc(var(--rh) * 0.0186))\">\u003c/b>\n  \u003cb style=\"grid-area:24/25/25/27;--vel:0.7380000000000001;transform-origin:left;transform:translate(calc(var(--cw) * 0.0160),calc(var(--rh) * -0.1220))\">\u003c/b>\n  \u003cb style=\"grid-area:24/24/25/26;--vel:0.684;transform-origin:left;transform:translate(calc(var(--cw) * 0.9541),calc(var(--rh) * -0.1825))\">\u003c/b>\n  \u003cb style=\"grid-area:21/26/22/28;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9892),calc(var(--rh) * 0.0629))\">\u003c/b>\n  \u003cb style=\"grid-area:21/27/22/29;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0273),calc(var(--rh) * -0.0776))\">\u003c/b>\n  \u003cb style=\"grid-area:21/26/22/28;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9655),calc(var(--rh) * -0.1381))\">\u003c/b>\n  \u003cb style=\"grid-area:21/27/22/29;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.0036),calc(var(--rh) * -0.2787))\">\u003c/b>\n  \u003cb style=\"grid-area:21/27/22/29;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0418),calc(var(--rh) * -0.4192))\">\u003c/b>\n  \u003cb style=\"grid-area:17/28/18/30;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9768),calc(var(--rh) * 0.2262))\">\u003c/b>\n  \u003cb style=\"grid-area:17/29/18/31;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0149),calc(var(--rh) * 0.0857))\">\u003c/b>\n  \u003cb style=\"grid-area:17/28/18/30;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.9531),calc(var(--rh) * 0.0252))\">\u003c/b>\n  \u003cb style=\"grid-area:17/28/18/30;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9912),calc(var(--rh) * -0.1154))\">\u003c/b>\n  \u003cb style=\"grid-area:17/29/18/31;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0294),calc(var(--rh) * -0.2559))\">\u003c/b>\n  \u003cb style=\"grid-area:14/30/15/32;--vel:0.5;transform-origin:left;transform:translate(calc(var(--cw) * 0.9644),calc(var(--rh) * 0.0495))\">\u003c/b>\n  \u003cb style=\"grid-area:14/31/15/33;--vel:0.47;transform-origin:left;transform:translate(calc(var(--cw) * 0.0026),calc(var(--rh) * -0.0910))\">\u003c/b>\n  \u003cb style=\"grid-area:14/31/15/33;--vel:0.44;transform-origin:left;transform:translate(calc(var(--cw) * 0.0407),calc(var(--rh) * -0.1515))\">\u003c/b>\n  \u003cb style=\"grid-area:14/30/15/32;--vel:0.41000000000000003;transform-origin:left;transform:translate(calc(var(--cw) * 0.9789),calc(var(--rh) * -0.2921))\">\u003c/b>\n  \u003cb style=\"grid-area:14/31/15/33;--vel:0.38;transform-origin:left;transform:translate(calc(var(--cw) * 0.0170),calc(var(--rh) * -0.4326))\">\u003c/b>\n\u003c/section>\n\u003csection class=\"trk\" data-name=\"Pad\" style=\"--wave:organ;--vol:0.05;--hue:280;--attack:0.3;--release:0.6;--verb:0.5;--vibrato:6;--width:0.5\">\n  \u003cb style=\"grid-area:24/1/25/17;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:24/1/25/17;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0900))\">\u003c/b>\n  \u003cb style=\"grid-area:21/1/22/17;--vel:0.7;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1600))\">\u003c/b>\n  \u003cb style=\"grid-area:21/1/22/17;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.2500))\">\u003c/b>\n  \u003cb style=\"grid-area:17/1/18/17;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:17/1/18/17;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0900))\">\u003c/b>\n  \u003cb style=\"grid-area:29/17/30/33;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:29/17/30/33;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0900))\">\u003c/b>\n  \u003cb style=\"grid-area:24/17/25/33;--vel:0.7\">\u003c/b>\n  \u003cb style=\"grid-area:24/17/25/33;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.0900))\">\u003c/b>\n  \u003cb style=\"grid-area:21/17/22/33;--vel:0.7;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.1600))\">\u003c/b>\n  \u003cb style=\"grid-area:21/17/22/33;--vel:0.5;transform-origin:left;transform:translate(0px,calc(var(--rh) * -0.2500))\">\u003c/b>\n\u003c/section>\n\u003csection class=\"trk\" data-name=\"Kick\" style=\"--wave:noise;--vol:0.4;--hue:10;--verb:0.04;--width:0\">\n  \u003cb style=\"grid-area:44/1/45/2;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:44/5/45/6;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:44/9/45/10;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:44/13/45/14;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:44/17/45/18;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:44/21/45/22;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:44/25/45/26;--vel:1\">\u003c/b>\n  \u003cb style=\"grid-area:44/29/45/30;--vel:1\">\u003c/b>\n\u003c/section>"},{"title":"music from nowhere","bpm":120,"steps":16,"css":"/* the markup has 8 EMPTY elements; this rule composes the melody */\n.trk[data-name=\"Formula\"] b {\n  display: block;\n  grid-column: calc((sibling-index() - 1) * 2 + 1);\n  grid-row: calc(28 - mod(sibling-index() * 5, 12));\n}\n/* and these notes exist nowhere in the markup at all */\nbody:has(#summon:checked) .trk[data-name=\"Ghost\"]::before { content: \"\"; grid-area: 36 / 1 / 37 / 17; --vel: 0.8; }\nbody:has(#summon:checked) .trk[data-name=\"Ghost\"]::after { content: \"\"; grid-area: 29 / 9 / 30 / 17; --vel: 0.6; }","mixer":"\u003clabel>\u003cinput type=\"checkbox\" id=\"summon\"> summon two notes that aren't in the markup\u003c/label>","song":"\u003csection class=\"trk\" data-name=\"Formula\" style=\"--wave:triangle;--vol:0.3;--hue:150\">\n  \u003cb>\u003c/b>\n  \u003cb>\u003c/b>\n  \u003cb>\u003c/b>\n  \u003cb>\u003c/b>\n  \u003cb>\u003c/b>\n  \u003cb>\u003c/b>\n  \u003cb>\u003c/b>\n  \u003cb>\u003c/b>\n\u003c/section>\n\u003csection class=\"trk\" data-name=\"Ghost\" style=\"--wave:sine;--vol:0.25;--hue:280\">\n\u003c/section>"}];
+const frame = document.getElementById("player");
+const railframe = document.getElementById("railframe");
+const stageno = document.getElementById("stageno");
+const stagename = document.getElementById("stagename");
+const sections = [...document.querySelectorAll(".ch")];
+let current = -1;
+let loaded = false;
+
+const send = (i) => {
+  if (!loaded) return;
+  frame.contentWindow.postMessage({ midicss: STAGES[i] }, "*");
+};
+const apply = (i) => {
+  if (i === current) return;
+  current = i;
+  sections.forEach((s, j) => s.classList.toggle("active", j === i));
+  stageno.textContent = String(i + 1).padStart(2, "0");
+  stagename.textContent = STAGES[i].title;
+  railframe.classList.toggle("cycling", i === 5);
+  send(i);
+};
+
+const ready = () => {
+  loaded = true;
+  if (current < 0) pick();
+  else send(current);
+};
+frame.addEventListener("load", ready);
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.midicssReady) ready();
+});
+
+// The observer only signals "something crossed the band" — the active
+// chapter is then chosen deterministically by geometry, so stale entries
+// from fast programmatic scrolls can't win.
+const pick = () => {
+  const bandY = innerHeight * 0.4;
+  let best = 0;
+  let bestD = Infinity;
+  sections.forEach((s, i) => {
+    const r = s.getBoundingClientRect();
+    const d = r.top <= bandY && r.bottom >= bandY ? 0 : Math.min(Math.abs(r.top - bandY), Math.abs(r.bottom - bandY));
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  apply(best);
+};
+const io = new IntersectionObserver(pick, { rootMargin: "-35% 0px -55% 0px" });
+sections.forEach((s) => io.observe(s));
+let pending = 0;
+window.addEventListener("scroll", () => {
+  if (pending) return;
+  pending = window.setTimeout(() => { pending = 0; pick(); }, 80);
+}, { passive: true });
+// heartbeat: IO, rAF and even scroll events can all stall in throttled or
+// hidden renderers; pick() is seven rect reads, so a slow poll guarantees
+// the active chapter is always right regardless of how we got there.
+window.setInterval(pick, 400);
+pick(); // initial state, including restored scroll positions
+try {
+  // cached iframes can finish before this script runs and never fire load
+  if (frame.contentDocument && frame.contentDocument.readyState === "complete") ready();
+} catch { /* cross-origin (file://) — the postMessage handshake covers it */ }
+</script>
+</body>
+</html>
